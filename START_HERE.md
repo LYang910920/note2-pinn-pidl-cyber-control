@@ -9,6 +9,7 @@ This repository is designed as a practical companion to Note 2.  Start with the 
 3. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
 4. Run `python scripts/generate_figures.py` to recreate the explanatory figures.
 5. Run `python scripts/run_training_iterations.py` when you want longer PINN/PIDL loss curves.
+6. Read `docs/EXTENDING.md` when you want to move beyond the small teaching models.
 
 ## Find The Right File
 
@@ -19,6 +20,8 @@ This repository is designed as a practical companion to Note 2.  Start with the 
 | Understand the Python modules | `src/README.md` |
 | Know which command generates which output | `scripts/README.md` |
 | Inspect loss curves and training metrics | `experiments/README.md` and `experiments/training_summary.md` |
+| Connect this repo to the differential-games repo | `docs/LEARNING_PATH.md` |
+| Extend to complex cyber or network models | `docs/EXTENDING.md` |
 | Check the license and copyright assumptions | `LICENSE` and `NOTICE.md` |
 
 ## Recommended Code Reading Order
@@ -37,3 +40,4 @@ This repository is designed as a practical companion to Note 2.  Start with the 
 | Change sparse observation count | CLI `--n-data` for inverse/PIDL examples |
 | Change malware dynamics | `beta`, `gamma`, and correction parameters in `src/` |
 | Change optimal-control penalties | `A`, `B`, `AT`, and loss weights in control scripts |
+| Move to degree-level, node-level, or graph-neural PINNs | `docs/EXTENDING.md` plus `network-control-differential-games` |

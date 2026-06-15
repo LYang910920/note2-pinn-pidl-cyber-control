@@ -17,6 +17,8 @@ If this is your first time opening the repo, read `START_HERE.md` first.  It giv
 | `docs/README.md` | Reading path and lecture-structure guide. |
 | `docs/implementation_companion.pdf` | Companion explanation for implementation choices. |
 | `docs/code_run_guide.pdf` | General run guide from the original bundle. |
+| `docs/LEARNING_PATH.md` | How this repo connects to the differential-games and Note 1 repos. |
+| `docs/EXTENDING.md` | How to extend the examples to richer models and large network settings. |
 | `src/README.md` | Source-code map, state conventions, and model responsibilities. |
 | `src/inverse_pinn_sir_malware.py` | Inverse PINN that learns malware propagation parameters from sparse `I(t)` data. |
 | `src/pidl_unknown_mechanism.py` | PIDL example with known SIR dynamics plus a learned missing mechanism. |
@@ -58,6 +60,17 @@ Run longer training-iteration diagnostics:
 python scripts/run_training_iterations.py
 ```
 
+## What You Need And What You Get
+
+| Question | Answer |
+|---|---|
+| What do I need to install? | Python, PyTorch, and Matplotlib from `requirements.txt`. |
+| What should I run first? | `bash scripts/run_smoke_tests.sh`. |
+| What does a successful run prove? | The PINN/PIDL scripts, tensor tests, and figure-generation scripts execute in this environment. |
+| What files should I inspect after training? | `experiments/training_summary.md`, the CSV files in `experiments/`, and `figures/training_iteration_diagnostics.png`. |
+| Where do I learn how to extend the model? | `docs/EXTENDING.md`. |
+| Where is the larger network-control foundation? | `docs/LEARNING_PATH.md` links this repo to `network-control-differential-games`. |
+
 ## Common Workflows
 
 | Goal | Command or file |
@@ -68,6 +81,8 @@ python scripts/run_training_iterations.py
 | Increase training time | `python scripts/run_training_iterations.py --iters 1000` |
 | Understand module responsibilities | `src/README.md` |
 | Understand command outputs | `scripts/README.md` |
+| Extend to network-scale PINN/PIDL models | `docs/EXTENDING.md` |
+| Follow the cross-repo sequence | `docs/LEARNING_PATH.md` |
 
 ## Main Ideas
 
@@ -117,6 +132,14 @@ The repo includes smoke tests for every executable script and unit tests for the
 This consolidated version keeps the Note 2 PDFs, source materials, generated figures, tests, CI workflow, and longer teaching diagnostics in one final repo.  The PMP-informed script computes `H_x` and `H_u` on the live autograd graph so stationarity residuals train the neural control model as intended.
 
 These examples are teaching code, not calibrated cyber-risk models.  For publication-grade experiments, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
+
+## Related Repository
+
+For the optimal-control and differential-game foundation behind PMP residuals and network-scale extensions, see:
+
+https://github.com/LYang910920/network-control-differential-games
+
+Use that repository first for degree-level, node-level, and hybrid impulse examples.  Then use this repository to study PINN/PIDL versions of inverse learning, missing-mechanism learning, and neural optimal control.
 
 ## License And Copyright
 

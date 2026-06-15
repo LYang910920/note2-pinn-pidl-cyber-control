@@ -25,6 +25,15 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 | `control_pinn_malware.py` | Train state and control networks by direct optimal-control loss minimization. | `StateNet`, `ControlNet`, `rhs`, `train` |
 | `pmp_informed_pinn_malware.py` | Train state, costate, and control networks with PMP residuals. | `hamiltonian`, `time_derivative`, `train` |
 
+## Inputs And Outputs
+
+| Component | Needs | Produces |
+|---|---|---|
+| Inverse PINN | sparse infected observations, collocation points, initial condition | state network, learned `beta`/`gamma`, loss history |
+| PIDL | sparse observations, known dynamics, correction-network architecture | state network, correction network, residual and correction diagnostics |
+| Direct control PINN | dynamics, cost weights, initial condition, collocation points | state/control networks and objective/residual history |
+| PMP-informed PINN | Hamiltonian terms, boundary conditions, collocation points | state/costate/control networks and PMP residual history |
+
 ## How The Pieces Fit
 
 1. Inverse PINN asks: can sparse observations identify hidden states and parameters?
@@ -35,3 +44,5 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 ## Teaching-Code Boundaries
 
 These are compact examples for learning and adaptation.  For research-grade studies, add multiple seeds, held-out trajectories, uncertainty estimates, and identifiability checks.
+
+For network-scale extensions, read `docs/EXTENDING.md` before changing code.

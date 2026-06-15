@@ -47,6 +47,7 @@ def rk4_step(x, dt, rhs):
 
 
 def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
+    """Generate data from a known SIR model plus a hidden nonlinear correction."""
     t = torch.linspace(0, T, n).view(-1, 1)
     dt = T/(n-1)
     x = torch.zeros(n, 3); x[0] = torch.tensor([0.95, 0.05, 0.0])
@@ -92,6 +93,11 @@ def positive(raw):
 
 
 def train(args):
+    """Train a PIDL state network and missing-mechanism correction network.
+
+    The known SIR part remains explicit.  The correction network only explains
+    residual behavior that the known mechanism cannot capture.
+    """
     torch.manual_seed(args.seed)
     t_all, x_all = generate()
     idx = torch.linspace(0, len(t_all)-1, args.n_data).long()
