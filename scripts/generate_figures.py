@@ -56,11 +56,67 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
     plt.close(fig)
 
 
+def _box(ax, xy, text, width=1.9, height=0.58, fc="#f7f7f7", ec="#333333", fontsize=8.5):
+    rect = plt.Rectangle(xy, width, height, facecolor=fc, edgecolor=ec, linewidth=1.4)
+    ax.add_patch(rect)
+    ax.text(xy[0] + width / 2, xy[1] + height / 2, text, ha="center", va="center", fontsize=fontsize)
+    return rect
+
+
+def _arrow(ax, start, end):
+    ax.annotate("", xy=end, xytext=start, arrowprops={"arrowstyle": "->", "lw": 1.4, "color": "#333333"})
+
+
+def plot_neural_architectures(output_dir: Path) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8))
+
+    ax = axes[0]
+    _box(ax, (0.1, 2.75), "time t", fc="#e8f1ff")
+    _box(ax, (2.1, 2.75), "state network\nx_theta(t)", fc="#fff4df")
+    _box(ax, (4.5, 2.75), "S(t), I(t), R(t)\nsoftmax simplex", width=2.2, fc="#e9f7ef")
+    _box(ax, (7.1, 3.25), "data loss\nobserved I(t)", width=1.9, fc="#f4ecff")
+    _box(ax, (7.1, 2.15), "ODE residual\nx' - f(x)", width=2.0, fc="#ffecec")
+    _arrow(ax, (2.0, 3.04), (2.1, 3.04))
+    _arrow(ax, (4.0, 3.04), (4.5, 3.04))
+    _arrow(ax, (6.6, 3.04), (7.1, 3.54))
+    _arrow(ax, (6.6, 3.04), (7.1, 2.44))
+    ax.set_title("Inverse PINN / PIDL state learner")
+    ax.set_xlim(0, 9.7)
+    ax.set_ylim(1.2, 4.2)
+    ax.axis("off")
+
+    ax = axes[1]
+    _box(ax, (0.1, 3.25), "time t", fc="#e8f1ff")
+    _box(ax, (2.0, 3.25), "state net\nx_theta(t)", fc="#fff4df")
+    _box(ax, (2.0, 2.25), "costate net\nlambda_psi(t)", fc="#fff4df")
+    _box(ax, (2.0, 1.25), "control net\nu_phi(t)", fc="#fff4df")
+    _box(ax, (4.6, 2.25), "Hamiltonian\nH(x,u,lambda)", width=2.1, fc="#e9f7ef")
+    _box(ax, (7.2, 3.1), "state residual", fc="#ffecec")
+    _box(ax, (7.2, 2.25), "costate residual", fc="#ffecec")
+    _box(ax, (7.2, 1.4), "stationarity\nH_u = 0", fc="#ffecec")
+    _arrow(ax, (1.9, 3.54), (2.0, 3.54))
+    _arrow(ax, (3.9, 3.54), (4.6, 2.85))
+    _arrow(ax, (3.9, 2.54), (4.6, 2.54))
+    _arrow(ax, (3.9, 1.54), (4.6, 2.25))
+    _arrow(ax, (6.7, 2.54), (7.2, 3.39))
+    _arrow(ax, (6.7, 2.54), (7.2, 2.54))
+    _arrow(ax, (6.7, 2.54), (7.2, 1.69))
+    ax.set_title("PMP-informed control PINN")
+    ax.set_xlim(0, 9.5)
+    ax.set_ylim(0.7, 4.2)
+    ax.axis("off")
+
+    fig.tight_layout()
+    fig.savefig(output_dir / "neural_architectures.png", dpi=180)
+    plt.close(fig)
+
+
 def main() -> None:
     output_dir = ROOT / "figures"
     output_dir.mkdir(exist_ok=True)
     plot_sparse_inverse_data(output_dir)
     plot_pidl_missing_mechanism(output_dir)
+    plot_neural_architectures(output_dir)
     print(f"Wrote figures to {output_dir}")
 
 

@@ -16,7 +16,10 @@ The scripts are compact by design: each file is a readable starting point for on
 | `src/control_pinn_malware.py` | Direct neural-control PINN for malware mitigation. |
 | `src/pmp_informed_pinn_malware.py` | PMP-informed PINN using state, costate, and stationarity residuals. |
 | `scripts/generate_figures.py` | Generates explanatory figures in `figures/`. |
+| `scripts/run_training_iterations.py` | Runs short PINN/PIDL diagnostics and writes CSV histories in `experiments/`. |
 | `scripts/run_smoke_tests.sh` | Runs all fast checks for this repo. |
+| `.github/workflows/smoke-tests.yml` | GitHub Actions workflow for dependency install, smoke tests, and figure generation. |
+| `experiments/` | Small training-iteration CSV outputs and an explanation of each metric. |
 | `tests/` | Small regression tests for data generation, constraints, and autograd connectivity. |
 
 ## Quick Start
@@ -40,6 +43,12 @@ Generate the figures used in this README:
 python scripts/generate_figures.py
 ```
 
+Run short training-iteration diagnostics:
+
+```bash
+python scripts/run_training_iterations.py
+```
+
 ## Main Ideas
 
 This repo keeps four related learning tasks separate:
@@ -51,6 +60,10 @@ This repo keeps four related learning tasks separate:
 
 ## Figures
 
+`figures/neural_architectures.png` summarizes the two main neural structures: inverse/PIDL state learning and PMP-informed control PINNs.
+
+![Neural architectures](figures/neural_architectures.png)
+
 `figures/inverse_pinn_sparse_data.png` shows the sparse-observation setting used by the inverse PINN example.
 
 ![Inverse PINN sparse-data setup](figures/inverse_pinn_sparse_data.png)
@@ -59,8 +72,25 @@ This repo keeps four related learning tasks separate:
 
 ![PIDL missing nonlinear mechanism](figures/pidl_missing_mechanism.png)
 
+## Training Diagnostics
+
+`scripts/run_training_iterations.py` writes four small experiment tables:
+
+| CSV | What to inspect |
+|---|---|
+| `experiments/inverse_pinn_training_history.csv` | Parameter estimates and whether data/ODE losses are both decreasing. |
+| `experiments/pidl_training_history.csv` | Whether the learned missing mechanism is used without dominating the known dynamics. |
+| `experiments/control_pinn_training_history.csv` | Objective, dynamics residual, and mean control across training. |
+| `experiments/pmp_informed_pinn_training_history.csv` | State, costate, stationarity, and boundary residuals for the PMP system. |
+
+The combined plot is:
+
+![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
+
 ## Validation
 
-The repo includes smoke tests for every executable script and unit tests for the core tensor constraints.  The PMP-informed script has been adjusted so `H_x` and `H_u` are computed on the live autograd graph; this ensures stationarity residuals actually train the neural control model.
+The repo includes smoke tests for every executable script and unit tests for the core tensor constraints.  It also has a GitHub Actions workflow that installs dependencies, runs smoke tests, and regenerates figures on push or pull request.
+
+This consolidated version merges the duplicate Note 2 materials into one final repo: it keeps the PDFs/source materials, generated figures, tests, CI workflow, and short training diagnostics in the same place.  The PMP-informed script computes `H_x` and `H_u` on the live autograd graph so stationarity residuals train the neural control model as intended.
 
 These examples are teaching code, not calibrated cyber-risk models.  For publication-grade experiments, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.

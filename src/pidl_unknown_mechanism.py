@@ -90,6 +90,7 @@ def train(args):
     t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1,1).to(DEVICE); t_f.requires_grad_(True)
     x0 = torch.tensor([[0.95,0.05,0.0]], device=DEVICE)
     B = torch.tensor([[-1.0, 1.0, 0.0]], device=DEVICE)
+    history = []
 
     for it in range(args.iters):
         opt.zero_grad()
@@ -107,11 +108,24 @@ def train(args):
         loss = loss_data + args.w_ic*loss_ic + args.w_res*loss_res + args.w_corr*loss_corr
         loss.backward(); opt.step()
         if it % args.log_every == 0:
+            row = {
+                "iteration": it,
+                "loss": float(loss.detach().item()),
+                "beta": float(beta.detach().item()),
+                "gamma": float(gamma.detach().item()),
+                "data_loss": float(loss_data.detach().item()),
+                "residual_loss": float(loss_res.detach().item()),
+                "correction_regularizer": float(loss_corr.detach().item()),
+                "mean_correction": float(g.mean().detach().item()),
+            }
+            history.append(row)
             print(
-                f"it={it:05d}, loss={loss.detach().item():.2e}, "
-                f"beta={beta.detach().item():.3f}, gamma={gamma.detach().item():.3f}, "
-                f"mean_g={g.mean().detach().item():.3f}"
+                f"it={it:05d}, loss={row['loss']:.2e}, "
+                f"beta={row['beta']:.3f}, gamma={row['gamma']:.3f}, "
+                f"mean_g={row['mean_correction']:.3f}"
             )
+    if getattr(args, "return_history", False):
+        return state_net, corr_net, history
     return state_net, corr_net
 
 
