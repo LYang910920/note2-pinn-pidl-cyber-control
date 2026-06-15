@@ -1,3 +1,9 @@
+"""Run longer Note 2 diagnostics and save reader-friendly artifacts.
+
+Smoke tests answer "does every script execute?"  This script answers "do the
+loss curves move in a sensible direction over time?"
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +36,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def inverse_args(iters: int) -> SimpleNamespace:
+    """Configuration for the sparse-data inverse PINN teaching run."""
     return SimpleNamespace(
         smoke=False,
         iters=iters,
@@ -48,6 +55,7 @@ def inverse_args(iters: int) -> SimpleNamespace:
 
 
 def pidl_args(iters: int) -> SimpleNamespace:
+    """Configuration for the PIDL missing-mechanism teaching run."""
     return SimpleNamespace(
         smoke=False,
         iters=iters,
@@ -65,6 +73,7 @@ def pidl_args(iters: int) -> SimpleNamespace:
 
 
 def control_args(iters: int) -> SimpleNamespace:
+    """Configuration for the direct neural-control PINN teaching run."""
     return SimpleNamespace(
         smoke=False,
         iters=iters,
@@ -87,6 +96,7 @@ def control_args(iters: int) -> SimpleNamespace:
 
 
 def pmp_args(iters: int) -> SimpleNamespace:
+    """Configuration for the PMP-informed PINN teaching run."""
     return SimpleNamespace(
         smoke=False,
         iters=iters,

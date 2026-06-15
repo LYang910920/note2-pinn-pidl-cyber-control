@@ -4,24 +4,32 @@ This repository is the executable companion for **Note 2: PINN/PIDL for Cyber Co
 
 The scripts are compact by design: each file is a readable starting point for one modeling idea, with small smoke modes for quick verification.
 
+## Start Here
+
+If this is your first time opening the repo, read `START_HERE.md` first.  It gives a five-minute path, a file finder, and the recommended code-reading order.
+
 ## Repository Map
 
 | Path | Purpose |
 |---|---|
+| `START_HERE.md` | First-stop guide for new readers. |
 | `docs/note2_pinn_pidl_cyber_control.pdf` | Main lecture note for PINN/PIDL cyber-control methods. |
 | `docs/README.md` | Reading path and lecture-structure guide. |
 | `docs/implementation_companion.pdf` | Companion explanation for implementation choices. |
 | `docs/code_run_guide.pdf` | General run guide from the original bundle. |
+| `src/README.md` | Source-code map, state conventions, and model responsibilities. |
 | `src/inverse_pinn_sir_malware.py` | Inverse PINN that learns malware propagation parameters from sparse `I(t)` data. |
 | `src/pidl_unknown_mechanism.py` | PIDL example with known SIR dynamics plus a learned missing mechanism. |
 | `src/control_pinn_malware.py` | Direct neural-control PINN for malware mitigation. |
 | `src/pmp_informed_pinn_malware.py` | PMP-informed PINN using state, costate, and stationarity residuals. |
+| `scripts/README.md` | Command guide for validation, figures, and longer diagnostics. |
 | `scripts/generate_figures.py` | Generates explanatory figures in `figures/`. |
 | `scripts/run_training_iterations.py` | Runs longer PINN/PIDL teaching diagnostics and writes CSV histories in `experiments/`. |
 | `scripts/run_smoke_tests.sh` | Runs all fast checks for this repo. |
 | `.github/workflows/smoke-tests.yml` | GitHub Actions workflow for dependency install, smoke tests, and figure generation. |
 | `experiments/` | Small training-iteration CSV outputs and an explanation of each metric. |
 | `tests/` | Small regression tests for data generation, constraints, and autograd connectivity. |
+| `LICENSE` and `NOTICE.md` | MIT license, copyright, and attribution notes. |
 
 ## Quick Start
 
@@ -49,6 +57,17 @@ Run longer training-iteration diagnostics:
 ```bash
 python scripts/run_training_iterations.py
 ```
+
+## Common Workflows
+
+| Goal | Command or file |
+|---|---|
+| Check that everything runs | `bash scripts/run_smoke_tests.sh` |
+| Rebuild README figures | `python scripts/generate_figures.py` |
+| Rebuild loss diagnostics | `python scripts/run_training_iterations.py` |
+| Increase training time | `python scripts/run_training_iterations.py --iters 1000` |
+| Understand module responsibilities | `src/README.md` |
+| Understand command outputs | `scripts/README.md` |
 
 ## Main Ideas
 
@@ -98,3 +117,7 @@ The repo includes smoke tests for every executable script and unit tests for the
 This consolidated version keeps the Note 2 PDFs, source materials, generated figures, tests, CI workflow, and longer teaching diagnostics in one final repo.  The PMP-informed script computes `H_x` and `H_u` on the live autograd graph so stationarity residuals train the neural control model as intended.
 
 These examples are teaching code, not calibrated cyber-risk models.  For publication-grade experiments, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
+
+## License And Copyright
+
+This repository is released under the MIT License.  See `LICENSE` for the full terms and `NOTICE.md` for copyright, dependency, and attribution notes.

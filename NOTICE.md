@@ -1,0 +1,16 @@
+# Copyright And Attribution Notice
+
+Copyright (c) 2026 Luxing Yang.
+
+This repository is an educational companion for Note 2, "PINN/PIDL for Cyber Control."  Unless a file states otherwise, the source code, LaTeX source, generated figures, and documentation in this repository are released under the MIT License in `LICENSE`.
+
+The examples are teaching materials.  They are not calibrated cyber-risk products, operational security tools, or benchmark implementations.
+
+Third-party Python dependencies keep their own licenses:
+
+| Dependency | Used for |
+|---|---|
+| PyTorch | autograd, neural networks, and PINN/PIDL training |
+| Matplotlib | figure generation |
+
+If you reuse the material in coursework, reports, or derivative repositories, keep the copyright notice, cite the repository or lecture note title, and clearly mark any changes you make.

@@ -59,16 +59,30 @@ def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
 class StateNet(nn.Module):
     def __init__(self, width=64):
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(1,width), nn.Tanh(), nn.Linear(width,width), nn.Tanh(), nn.Linear(width,3))
-    def forward(self,t):
+        self.net = nn.Sequential(
+            nn.Linear(1, width),
+            nn.Tanh(),
+            nn.Linear(width, width),
+            nn.Tanh(),
+            nn.Linear(width, 3),
+        )
+
+    def forward(self, t):
         return torch.softmax(self.net(t), dim=-1)
 
 
 class CorrectionNet(nn.Module):
     def __init__(self, width=64):
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(3,width), nn.Tanh(), nn.Linear(width,width), nn.Tanh(), nn.Linear(width,1))
-    def forward(self,x):
+        self.net = nn.Sequential(
+            nn.Linear(3, width),
+            nn.Tanh(),
+            nn.Linear(width, width),
+            nn.Tanh(),
+            nn.Linear(width, 1),
+        )
+
+    def forward(self, x):
         # softplus makes the correction nonnegative.  Remove it if sign is unknown.
         return torch.nn.functional.softplus(self.net(x))
 
@@ -130,19 +144,23 @@ def train(args):
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--smoke", action="store_true")
-    p.add_argument("--iters", type=int, default=5000)
-    p.add_argument("--n-data", type=int, default=40)
-    p.add_argument("--n-collocation", type=int, default=200)
-    p.add_argument("--width", type=int, default=64)
-    p.add_argument("--lr", type=float, default=1e-3)
-    p.add_argument("--w-ic", type=float, default=10.0)
-    p.add_argument("--w-res", type=float, default=1.0)
-    p.add_argument("--w-corr", type=float, default=1e-3)
-    p.add_argument("--log-every", type=int, default=1000)
-    p.add_argument("--seed", type=int, default=2)
+    p = argparse.ArgumentParser(description="Train a PIDL model with a known SIR mechanism and learned correction.")
+    p.add_argument("--smoke", action="store_true", help="Run a tiny execution check.")
+    p.add_argument("--iters", type=int, default=5000, help="Number of optimizer iterations.")
+    p.add_argument("--n-data", type=int, default=40, help="Number of sparse infected-observation points.")
+    p.add_argument("--n-collocation", type=int, default=200, help="Number of collocation points.")
+    p.add_argument("--width", type=int, default=64, help="Hidden width for state/correction networks.")
+    p.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate.")
+    p.add_argument("--w-ic", type=float, default=10.0, help="Weight on initial-condition loss.")
+    p.add_argument("--w-res", type=float, default=1.0, help="Weight on residual loss.")
+    p.add_argument("--w-corr", type=float, default=1e-3, help="Weight on correction regularization.")
+    p.add_argument("--log-every", type=int, default=1000, help="Iteration interval for console logs and history rows.")
+    p.add_argument("--seed", type=int, default=2, help="Random seed.")
     args = p.parse_args()
     if args.smoke:
-        args.iters = 10; args.n_collocation = 50; args.n_data = 10; args.width = 16; args.log_every = 1
+        args.iters = 10
+        args.n_collocation = 50
+        args.n_data = 10
+        args.width = 16
+        args.log_every = 1
     train(args)

@@ -1,3 +1,10 @@
+"""Generate static figures for the Note 2 README and teaching notes.
+
+The figures show the sparse-data setup, the synthetic missing mechanism, and
+the neural architectures.  Training diagnostics live in
+`scripts/run_training_iterations.py`.
+"""
+
 from pathlib import Path
 import sys
 
