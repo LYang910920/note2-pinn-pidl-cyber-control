@@ -24,7 +24,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
     if not rows:
         return
     with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -41,7 +41,7 @@ def inverse_args(iters: int) -> SimpleNamespace:
         lr=1e-3,
         w_ic=10.0,
         w_ode=1.0,
-        log_every=max(1, iters // 12),
+        log_every=max(1, iters // 24),
         seed=21,
         return_history=True,
     )
@@ -58,7 +58,7 @@ def pidl_args(iters: int) -> SimpleNamespace:
         w_ic=10.0,
         w_res=1.0,
         w_corr=1e-3,
-        log_every=max(1, iters // 12),
+        log_every=max(1, iters // 24),
         seed=22,
         return_history=True,
     )
@@ -80,7 +80,7 @@ def control_args(iters: int) -> SimpleNamespace:
         AT=10.0,
         w_res=10.0,
         w_ic=10.0,
-        log_every=max(1, iters // 12),
+        log_every=max(1, iters // 24),
         seed=23,
         return_history=True,
     )
@@ -104,7 +104,7 @@ def pmp_args(iters: int) -> SimpleNamespace:
         w_costate=1.0,
         w_stat=1.0,
         w_bc=10.0,
-        log_every=max(1, iters // 12),
+        log_every=max(1, iters // 24),
         seed=24,
         return_history=True,
     )
@@ -141,9 +141,34 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     plt.close(fig)
 
 
+def reduction(start: float, end: float) -> float:
+    return end / max(abs(start), 1e-12)
+
+
+def write_summary(path: Path, histories: dict[str, list[dict]]) -> None:
+    inv = histories["inverse"]
+    pidl = histories["pidl"]
+    control = histories["control"]
+    pmp = histories["pmp"]
+    text = f"""# Training Summary
+
+These diagnostics use longer laptop-friendly runs than the smoke tests.  They are intended to show whether each loss is moving toward a stable low-error regime.
+
+| Diagnostic | Start | End | End/start |
+|---|---:|---:|---:|
+| Inverse PINN total loss | {inv[0]["loss"]:.3e} | {inv[-1]["loss"]:.3e} | {reduction(inv[0]["loss"], inv[-1]["loss"]):.3e} |
+| PIDL total loss | {pidl[0]["loss"]:.3e} | {pidl[-1]["loss"]:.3e} | {reduction(pidl[0]["loss"], pidl[-1]["loss"]):.3e} |
+| Direct control PINN total loss | {control[0]["loss"]:.3e} | {control[-1]["loss"]:.3e} | {reduction(control[0]["loss"], control[-1]["loss"]):.3e} |
+| PMP-informed stationarity loss | {pmp[0]["stationarity_loss"]:.3e} | {pmp[-1]["stationarity_loss"]:.3e} | {reduction(pmp[0]["stationarity_loss"], pmp[-1]["stationarity_loss"]):.3e} |
+
+The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
+"""
+    path.write_text(text)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run short training-iteration experiments for Note 2.")
-    parser.add_argument("--iters", type=int, default=72, help="Small iteration count for each PINN/PIDL diagnostic.")
+    parser = argparse.ArgumentParser(description="Run training-iteration experiments for Note 2.")
+    parser.add_argument("--iters", type=int, default=600, help="Iteration count for each PINN/PIDL diagnostic.")
     args = parser.parse_args()
 
     exp_dir = ROOT / "experiments"
@@ -164,6 +189,7 @@ def main() -> None:
     write_csv(exp_dir / "pidl_training_history.csv", pidl_history)
     write_csv(exp_dir / "control_pinn_training_history.csv", control_history)
     write_csv(exp_dir / "pmp_informed_pinn_training_history.csv", pmp_history)
+    write_summary(exp_dir / "training_summary.md", histories)
     plot_training_diagnostics(fig_dir / "training_iteration_diagnostics.png", histories)
 
     print(f"Wrote experiment CSV files to {exp_dir}")

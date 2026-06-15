@@ -9,6 +9,7 @@ The scripts are compact by design: each file is a readable starting point for on
 | Path | Purpose |
 |---|---|
 | `docs/note2_pinn_pidl_cyber_control.pdf` | Main lecture note for PINN/PIDL cyber-control methods. |
+| `docs/README.md` | Reading path and lecture-structure guide. |
 | `docs/implementation_companion.pdf` | Companion explanation for implementation choices. |
 | `docs/code_run_guide.pdf` | General run guide from the original bundle. |
 | `src/inverse_pinn_sir_malware.py` | Inverse PINN that learns malware propagation parameters from sparse `I(t)` data. |
@@ -16,7 +17,7 @@ The scripts are compact by design: each file is a readable starting point for on
 | `src/control_pinn_malware.py` | Direct neural-control PINN for malware mitigation. |
 | `src/pmp_informed_pinn_malware.py` | PMP-informed PINN using state, costate, and stationarity residuals. |
 | `scripts/generate_figures.py` | Generates explanatory figures in `figures/`. |
-| `scripts/run_training_iterations.py` | Runs short PINN/PIDL diagnostics and writes CSV histories in `experiments/`. |
+| `scripts/run_training_iterations.py` | Runs longer PINN/PIDL teaching diagnostics and writes CSV histories in `experiments/`. |
 | `scripts/run_smoke_tests.sh` | Runs all fast checks for this repo. |
 | `.github/workflows/smoke-tests.yml` | GitHub Actions workflow for dependency install, smoke tests, and figure generation. |
 | `experiments/` | Small training-iteration CSV outputs and an explanation of each metric. |
@@ -43,7 +44,7 @@ Generate the figures used in this README:
 python scripts/generate_figures.py
 ```
 
-Run short training-iteration diagnostics:
+Run longer training-iteration diagnostics:
 
 ```bash
 python scripts/run_training_iterations.py
@@ -74,7 +75,7 @@ This repo keeps four related learning tasks separate:
 
 ## Training Diagnostics
 
-`scripts/run_training_iterations.py` writes four small experiment tables:
+`scripts/run_training_iterations.py` writes four experiment tables and a summary:
 
 | CSV | What to inspect |
 |---|---|
@@ -82,6 +83,9 @@ This repo keeps four related learning tasks separate:
 | `experiments/pidl_training_history.csv` | Whether the learned missing mechanism is used without dominating the known dynamics. |
 | `experiments/control_pinn_training_history.csv` | Objective, dynamics residual, and mean control across training. |
 | `experiments/pmp_informed_pinn_training_history.csv` | State, costate, stationarity, and boundary residuals for the PMP system. |
+| `experiments/training_summary.md` | First-versus-last loss reductions and interpretation. |
+
+The default run is intentionally longer than smoke mode.  The inverse PINN, PIDL, and direct-control PINN losses should move toward a low-error regime.  For the PMP-informed PINN, the stationarity residual is the cleanest quick sanity signal because the costate boundary term can dominate the total loss early in training.
 
 The combined plot is:
 
@@ -91,6 +95,6 @@ The combined plot is:
 
 The repo includes smoke tests for every executable script and unit tests for the core tensor constraints.  It also has a GitHub Actions workflow that installs dependencies, runs smoke tests, and regenerates figures on push or pull request.
 
-This consolidated version merges the duplicate Note 2 materials into one final repo: it keeps the PDFs/source materials, generated figures, tests, CI workflow, and short training diagnostics in the same place.  The PMP-informed script computes `H_x` and `H_u` on the live autograd graph so stationarity residuals train the neural control model as intended.
+This consolidated version keeps the Note 2 PDFs, source materials, generated figures, tests, CI workflow, and longer teaching diagnostics in one final repo.  The PMP-informed script computes `H_x` and `H_u` on the live autograd graph so stationarity residuals train the neural control model as intended.
 
 These examples are teaching code, not calibrated cyber-risk models.  For publication-grade experiments, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
