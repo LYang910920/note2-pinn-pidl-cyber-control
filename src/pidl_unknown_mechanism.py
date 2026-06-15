@@ -1,0 +1,134 @@
+"""
+PIDL example: known malware mechanism plus an unknown correction term.
+
+The synthetic data are generated from a model with an extra nonlinear behavior
+change term:
+    S' = -beta S I - q S I^2
+    I' =  beta S I + q S I^2 - gamma I
+    R' =  gamma I
+The learner is given the known SIR part and learns a neural correction g_phi(S,I,R)
+so that
+    x' = f_known(x; beta,gamma) + B g_phi(x)
+where B=[-1,+1,0]^T keeps mass conserved.
+
+This illustrates PIDL: use known physics/mechanism and learn only the missing
+piece.  It is usually easier to interpret and more data-efficient than learning
+the entire vector field as a black box.
+"""
+from __future__ import annotations
+
+import argparse
+import torch
+torch.set_num_threads(1)
+import torch.nn as nn
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def known_rhs(x, beta, gamma):
+    S, I, R = x[..., 0], x[..., 1], x[..., 2]
+    return torch.stack([-beta*S*I, beta*S*I - gamma*I, gamma*I], dim=-1)
+
+
+def true_rhs(x, beta, gamma, q):
+    S, I, R = x[..., 0], x[..., 1], x[..., 2]
+    corr = q*S*I*I
+    return known_rhs(x, beta, gamma) + torch.stack([-corr, corr, torch.zeros_like(corr)], dim=-1)
+
+
+def rk4_step(x, dt, rhs):
+    k1 = rhs(x)
+    k2 = rhs(x + 0.5*dt*k1)
+    k3 = rhs(x + 0.5*dt*k2)
+    k4 = rhs(x + dt*k3)
+    y = x + dt*(k1+2*k2+2*k3+k4)/6.0
+    y = torch.clamp(y, 0.0, 1.0)
+    return y / y.sum(dim=-1, keepdim=True)
+
+
+def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
+    t = torch.linspace(0, T, n).view(-1, 1)
+    dt = T/(n-1)
+    x = torch.zeros(n, 3); x[0] = torch.tensor([0.95, 0.05, 0.0])
+    for k in range(n-1):
+        rhs = lambda y: true_rhs(y, torch.tensor(beta), torch.tensor(gamma), torch.tensor(q))
+        x[k+1] = rk4_step(x[k], dt, rhs)
+    return t, x
+
+
+class StateNet(nn.Module):
+    def __init__(self, width=64):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(1,width), nn.Tanh(), nn.Linear(width,width), nn.Tanh(), nn.Linear(width,3))
+    def forward(self,t):
+        return torch.softmax(self.net(t), dim=-1)
+
+
+class CorrectionNet(nn.Module):
+    def __init__(self, width=64):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(3,width), nn.Tanh(), nn.Linear(width,width), nn.Tanh(), nn.Linear(width,1))
+    def forward(self,x):
+        # softplus makes the correction nonnegative.  Remove it if sign is unknown.
+        return torch.nn.functional.softplus(self.net(x))
+
+
+def positive(raw):
+    return torch.nn.functional.softplus(raw) + 1e-6
+
+
+def train(args):
+    torch.manual_seed(args.seed)
+    t_all, x_all = generate()
+    idx = torch.linspace(0, len(t_all)-1, args.n_data).long()
+    t_data = t_all[idx].to(DEVICE); I_data = x_all[idx, 1:2].to(DEVICE)
+    state_net = StateNet(args.width).to(DEVICE)
+    corr_net = CorrectionNet(args.width).to(DEVICE)
+    beta_raw = nn.Parameter(torch.tensor(0.0, device=DEVICE))
+    gamma_raw = nn.Parameter(torch.tensor(-1.0, device=DEVICE))
+    opt = torch.optim.Adam(list(state_net.parameters()) + list(corr_net.parameters()) + [beta_raw, gamma_raw], lr=args.lr)
+    t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1,1).to(DEVICE); t_f.requires_grad_(True)
+    x0 = torch.tensor([[0.95,0.05,0.0]], device=DEVICE)
+    B = torch.tensor([[-1.0, 1.0, 0.0]], device=DEVICE)
+
+    for it in range(args.iters):
+        opt.zero_grad()
+        beta, gamma = positive(beta_raw), positive(gamma_raw)
+        x_data_pred = state_net(t_data)
+        loss_data = torch.mean((x_data_pred[:,1:2] - I_data)**2)
+        loss_ic = torch.mean((state_net(torch.zeros(1,1,device=DEVICE)) - x0)**2)
+        x_f = state_net(t_f)
+        dxdt = torch.cat([torch.autograd.grad(x_f[:,j].sum(), t_f, create_graph=True)[0] for j in range(3)], dim=1)
+        g = corr_net(x_f)              # shape [N,1]
+        rhs = known_rhs(x_f, beta, gamma) + g @ B
+        loss_res = torch.mean((dxdt - rhs)**2)
+        # Mild regularization discourages unneeded correction if known model suffices.
+        loss_corr = torch.mean(g**2)
+        loss = loss_data + args.w_ic*loss_ic + args.w_res*loss_res + args.w_corr*loss_corr
+        loss.backward(); opt.step()
+        if it % args.log_every == 0:
+            print(
+                f"it={it:05d}, loss={loss.detach().item():.2e}, "
+                f"beta={beta.detach().item():.3f}, gamma={gamma.detach().item():.3f}, "
+                f"mean_g={g.mean().detach().item():.3f}"
+            )
+    return state_net, corr_net
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--smoke", action="store_true")
+    p.add_argument("--iters", type=int, default=5000)
+    p.add_argument("--n-data", type=int, default=40)
+    p.add_argument("--n-collocation", type=int, default=200)
+    p.add_argument("--width", type=int, default=64)
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--w-ic", type=float, default=10.0)
+    p.add_argument("--w-res", type=float, default=1.0)
+    p.add_argument("--w-corr", type=float, default=1e-3)
+    p.add_argument("--log-every", type=int, default=1000)
+    p.add_argument("--seed", type=int, default=2)
+    args = p.parse_args()
+    if args.smoke:
+        args.iters = 10; args.n_collocation = 50; args.n_data = 10; args.width = 16; args.log_every = 1
+    train(args)
