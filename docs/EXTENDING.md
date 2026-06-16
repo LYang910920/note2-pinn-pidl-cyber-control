@@ -1,28 +1,10 @@
 # Extending Note 2
 
-This repository starts with compact PINN/PIDL examples.  The extension path is to keep the same loss decomposition while replacing the small SIR system with richer dynamics, data, and neural architectures.
+Keep the same loss decomposition while replacing the small teaching model:
 
-## What You Need
-
-| Need | Where it appears now |
-|---|---|
-| State variables and constraints | `StateNet` classes in `src/` |
-| Known dynamics | `sir_rhs`, `known_rhs`, `rhs`, or `f_state` |
-| Sparse observations | `generate_data`, `generate`, and `t_data`/`I_data` construction |
-| Unknown parameters | `beta_raw`, `gamma_raw`, and `positive` transforms |
-| Missing mechanisms | `CorrectionNet` in `pidl_unknown_mechanism.py` |
-| Optimality residuals | `hamiltonian`, `H_x`, and `H_u` in `pmp_informed_pinn_malware.py` |
-
-## What You Get
-
-The current scripts produce:
-
-| Output | Meaning |
-|---|---|
-| `figures/*.png` | Visual checks for sparse data, missing mechanisms, and architecture diagrams |
-| `experiments/*.csv` | Logged loss terms and learned quantities |
-| `experiments/training_summary.md` | First-versus-last interpretation of the diagnostics |
-| GitHub Actions smoke tests | Basic confidence that scripts and figures still run |
+```text
+state network -> dynamics residual -> data/boundary loss -> diagnostics
+```
 
 ## Extension Path
 
@@ -35,28 +17,19 @@ The current scripts produce:
 
 ## Scaling To Network Models
 
-The current examples use population-level SIR states.  Large cyber or social-network models can use:
+For larger models, move from population-level SIR states to degree-level PINNs, node-level vector states, graph-neural PINNs, operator-learning models, or hybrid neural control with jump losses. Keep the first version small and testable before scaling architecture or data.
 
-| Representation | Use when | Implementation direction |
+## Related Learning Path
+
+Use these repositories together:
+
+| Step | Repository | Focus |
 |---|---|---|
-| Degree-level PINN | nodes can be grouped by degree | learn one trajectory per degree class |
-| Node-level PINN | every node has its own state | use vector-valued state networks and sparse adjacency operations |
-| Graph neural PINN | topology should affect propagation or control | combine GNN layers with residual losses |
-| Operator-learning model | many network instances are needed | learn a map from graph/features to trajectories or controls |
-| Hybrid neural control | continuous dynamics plus impulses | combine PINN residuals with jump or event losses |
+| 1 | `network-control-differential-games` | PMP, FBSM, degree/node-level network control, differential games |
+| 2 | `note1-cyber-control-games` | ODE-to-RL conversion, DDQN, CTDE/MADRL |
+| 3 | `note2-pinn-pidl-cyber-control` | PINN/PIDL inverse learning and neural optimal control |
 
-For the network optimal-control foundation, compare with:
-
-https://github.com/LYang910920/network-control-differential-games
-
-Useful pieces from that repository:
-
-| Concept | Where to look there | How it helps here |
-|---|---|---|
-| Degree-k dynamics | `examples/lecture/code/simple_degree_k_control.py` | Shows how to move from scalar SIR to degree-class arrays |
-| Node-level games | `examples/lecture/code/network_control_examples.py` | Shows state and control variables indexed by graph nodes |
-| PMP and Hamiltonian updates | `docs/lecture_note.pdf` and lecture code | Gives target residuals for PMP-informed neural training |
-| Hybrid impulse examples | `examples/lecture/code/network_control_examples.py` | Suggests jump losses for PINN/PIDL hybrid systems |
+Companion repository: https://github.com/LYang910920/network-control-differential-games
 
 ## Research-Grade Checklist
 

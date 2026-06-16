@@ -11,8 +11,7 @@ Recommended order:
 5. Read the direct-control PINN before the PMP-informed PINN.
 6. Use `implementation_companion.pdf` when mapping losses and residuals to code.
 7. Use `code_run_guide.pdf` for run commands and troubleshooting.
-8. Use `LEARNING_PATH.md` to connect this note with the network optimal-control and Note 1 repositories.
-9. Use `EXTENDING.md` before adapting the examples to larger graph or cyber-security models.
+8. Use `EXTENDING.md` before adapting the examples to larger graph or cyber-security models.
 
 Source files are in `latex/`.  The source is included for inspection and adaptation; the checked-in PDF is the version intended for reading.
 
@@ -27,9 +26,4 @@ The runnable code mirrors this lecture order:
 | Direct neural-control PINN | `src/control_pinn_malware.py` |
 | PMP-informed state/costate/control PINN | `src/pmp_informed_pinn_malware.py` |
 
-Extension and cross-repository guides:
-
-| Guide | Purpose |
-|---|---|
-| `LEARNING_PATH.md` | Connects this repo to `network-control-differential-games` and Note 1. |
-| `EXTENDING.md` | Explains how to move from compact SIR/PINN examples to larger network models. |
+For extension and cross-repository guidance, read `EXTENDING.md`.
