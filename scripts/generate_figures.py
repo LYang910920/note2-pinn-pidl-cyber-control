@@ -1,5 +1,8 @@
 """Generate static figures for the Note 2 README and teaching notes.
 
+Copyright (c) 2026 Luxing Yang.
+Licensed under the MIT License. See LICENSE in the repository root.
+
 The figures show the sparse-data setup, the synthetic missing mechanism, and
 the neural architectures.  Training diagnostics live in
 `scripts/run_training_iterations.py`.

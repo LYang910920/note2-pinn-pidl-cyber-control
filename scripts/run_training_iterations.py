@@ -1,5 +1,8 @@
 """Run longer Note 2 diagnostics and save reader-friendly artifacts.
 
+Copyright (c) 2026 Luxing Yang.
+Licensed under the MIT License. See LICENSE in the repository root.
+
 Smoke tests answer "does every script execute?"  This script answers "do the
 loss curves move in a sensible direction over time?"
 """

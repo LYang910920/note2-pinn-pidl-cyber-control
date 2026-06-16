@@ -1,4 +1,7 @@
 """
+Copyright (c) 2026 Luxing Yang.
+Licensed under the MIT License. See LICENSE in the repository root.
+
 PIDL example: known malware mechanism plus an unknown correction term.
 
 The synthetic data are generated from a model with an extra nonlinear behavior

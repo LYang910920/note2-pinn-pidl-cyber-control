@@ -8,11 +8,14 @@ The scripts are compact by design: each file is a readable starting point for on
 
 If this is your first time opening the repo, read `START_HERE.md` first.  It gives a five-minute path, a file finder, and the recommended code-reading order.
 
+For a one-page bird's-eye view of the folders, code flow, command flow, and outputs, read `PROJECT_MAP.md`.
+
 ## Repository Map
 
 | Path | Purpose |
 |---|---|
 | `START_HERE.md` | First-stop guide for new readers. |
+| `PROJECT_MAP.md` | One-page map of folders, code flow, commands, and outputs. |
 | `docs/note2_pinn_pidl_cyber_control.pdf` | Main lecture note for PINN/PIDL cyber-control methods. |
 | `docs/README.md` | Reading path and lecture-structure guide. |
 | `docs/implementation_companion.pdf` | Companion explanation for implementation choices. |
@@ -76,6 +79,7 @@ python scripts/run_training_iterations.py
 | Goal | Command or file |
 |---|---|
 | Check that everything runs | `bash scripts/run_smoke_tests.sh` |
+| Get the big-picture structure | `PROJECT_MAP.md` |
 | Rebuild README figures | `python scripts/generate_figures.py` |
 | Rebuild loss diagnostics | `python scripts/run_training_iterations.py` |
 | Increase training time | `python scripts/run_training_iterations.py --iters 1000` |
