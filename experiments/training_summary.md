@@ -10,3 +10,15 @@ These diagnostics use longer laptop-friendly runs than the smoke tests.  They ar
 | PMP-informed stationarity loss | 2.187e-01 | 3.364e-03 | 1.539e-02 |
 
 The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
+
+## Baseline Comparison Snapshot
+
+The second figure asks a different question: after training, how do the learned methods compare with simple alternatives?
+
+| Topic | Best method in this run | Metric | Value |
+|---|---|---|---:|
+| Sparse-data inverse PINN | Inverse PINN (data + ODE residual) | full_state_mse | 1.713e-03 |
+| PIDL missing mechanism | PIDL learned correction | full_state_mse | 3.328e-03 |
+| Controlled malware mitigation | Rollout-optimized neural control | rollout objective | 6.153e+00 |
+
+Open `figures/baseline_comparison.png` for the visual comparison and `experiments/baseline_comparison_metrics.csv` for the exact numbers.

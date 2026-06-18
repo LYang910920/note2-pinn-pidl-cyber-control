@@ -1,13 +1,13 @@
 
 \documentclass[11pt,a4paper]{article}
-\input{lecture_style}
+\input{tutorial_style}
 \begin{document}
-\lecturetitle{Lecture Note 2}{PINN and PIDL for Cyber Propagation, Parameter Learning, and Optimal Control}{A self-contained tutorial with implementation details, evaluation guidance, and Python examples}{Prepared for advanced research discussion and supervision}
+\tutorialtitle{Tutorial Note 2}{PINN and PIDL for Cyber Propagation, Parameter Learning, and Optimal Control}{A self-contained tutorial with implementation details, evaluation guidance, and Python examples}{Prepared for advanced research discussion and supervision}
 \tableofcontents
 \newpage
 \section*{Reading Guide}
 \addcontentsline{toc}{section}{Reading Guide}
-This lecture note is designed to be self-contained. It does not assume that the reader has read a separate note on reinforcement learning, differential games, or Pontryagin's Maximum Principle. The main focus is \emph{Physics-Informed Neural Networks} (PINNs) and the broader family of \emph{Physics-Informed Deep Learning} (PIDL) methods for cyber propagation systems. PINN is treated as the core method; PIDL is introduced as the larger design philosophy that combines neural networks, differential-equation knowledge, partial observations, priors, simulators, and sometimes optimality or game-theoretic conditions.
+This tutorial note is designed to be self-contained. It does not assume that the reader has read a separate note on reinforcement learning, differential games, or Pontryagin's Maximum Principle. The main focus is \emph{Physics-Informed Neural Networks} (PINNs) and the broader family of \emph{Physics-Informed Deep Learning} (PIDL) methods for cyber propagation systems. PINN is treated as the core method; PIDL is introduced as the larger design philosophy that combines neural networks, differential-equation knowledge, partial observations, priors, simulators, and sometimes optimality or game-theoretic conditions.
 
 The note answers four practical questions.
 \begin{enumerate}[leftmargin=2em]
@@ -648,7 +648,7 @@ For cyber propagation, a practical distinction is the following:
 \end{equation}
 
 \begin{takeaway}
-A pure PINN lecture should begin with the assumption that a differential equation model is available. Neural ODEs become central only when the model structure itself is uncertain. PIDL is the umbrella; PINN is one concrete and widely used implementation.
+A pure PINN tutorial should begin with the assumption that a differential equation model is available. Neural ODEs become central only when the model structure itself is uncertain. PIDL is the umbrella; PINN is one concrete and widely used implementation.
 \end{takeaway}
 
 \subsection{A fuller view of PIDL}

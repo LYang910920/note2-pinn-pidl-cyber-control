@@ -3,8 +3,9 @@
 Copyright (c) 2026 Luxing Yang.
 Licensed under the MIT License. See LICENSE in the repository root.
 
-Smoke tests answer "does every script execute?"  This script answers "do the
-loss curves move in a sensible direction over time?"
+Smoke tests answer "does every script execute?"  This script answers two
+heavier questions: do the loss curves move in a sensible direction, and do
+trained methods beat simple, topic-specific baselines?
 """
 
 from __future__ import annotations
@@ -13,19 +14,45 @@ import argparse
 import csv
 from pathlib import Path
 import sys
+import textwrap
 from types import SimpleNamespace
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from control_pinn_malware import train as train_control_pinn
-from inverse_pinn_sir_malware import train as train_inverse_pinn
+from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
+from inverse_pinn_sir_malware import generate_data as generate_inverse_data, train as train_inverse_pinn
+from pidl_unknown_mechanism import generate as generate_pidl_data
+from pidl_unknown_mechanism import known_rhs as pidl_known_rhs
+from pidl_unknown_mechanism import rk4_step as pidl_rk4_step
 from pidl_unknown_mechanism import train as train_pidl
 from pmp_informed_pinn_malware import train as train_pmp_pinn
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+BASELINE_FIELDS = [
+    "topic",
+    "method",
+    "plot_label",
+    "primary_metric",
+    "primary_value",
+    "state_mse",
+    "infected_mse",
+    "parameter_l1_error",
+    "correction_mse",
+    "objective",
+    "cumulative_infected",
+    "peak_infected",
+    "final_infected",
+    "mean_control",
+    "notes",
+]
 
 
 def write_csv(path: Path, rows: list[dict]) -> None:
@@ -36,6 +63,25 @@ def write_csv(path: Path, rows: list[dict]) -> None:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def baseline_row(**kwargs) -> dict:
+    """Create a consistent row for baseline-comparison metrics."""
+    row = {key: "" for key in BASELINE_FIELDS}
+    row.update(kwargs)
+    return row
+
+
+def to_numpy(x) -> np.ndarray:
+    """Move a tensor or array-like value to a NumPy array."""
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)
+
+
+def mse(a, b) -> float:
+    """Mean squared error as a plain Python float."""
+    return float(np.mean((np.asarray(a) - np.asarray(b)) ** 2))
 
 
 def inverse_args(iters: int) -> SimpleNamespace:
@@ -177,11 +223,371 @@ def reduction(start: float, end: float) -> float:
     return end / max(abs(start), 1e-12)
 
 
-def write_summary(path: Path, histories: dict[str, list[dict]]) -> None:
+def roll_wrong_parameter_sir(beta: float, gamma: float, T: float = 20.0, n_grid: int = 400) -> np.ndarray:
+    """Roll out a deliberately misspecified SIR baseline for inverse PINN comparison."""
+    _, x = generate_inverse_data(beta_true=beta, gamma_true=gamma, T=T, n_grid=n_grid)
+    return to_numpy(x)
+
+
+def evaluate_inverse_baselines(model, beta: float, gamma: float, args: SimpleNamespace) -> list[dict]:
+    """Compare the inverse PINN against simple sparse-data baselines."""
+    t_all, x_all = generate_inverse_data(noise=args.noise)
+    t_np = to_numpy(t_all[:, 0])
+    x_true = to_numpy(x_all)
+    idx = torch.linspace(0, len(t_all) - 1, args.n_data).long()
+    t_sparse = to_numpy(t_all[idx, 0])
+    i_sparse = to_numpy(x_all[idx, 1])
+
+    model.eval()
+    with torch.no_grad():
+        x_pinn = to_numpy(model(t_all.to(DEVICE)))
+
+    i_interp = np.interp(t_np, t_sparse, i_sparse)
+    x_interp = np.column_stack([1.0 - i_interp, i_interp, np.zeros_like(i_interp)])
+    x_wrong = roll_wrong_parameter_sir(beta=0.55, gamma=0.35, n_grid=len(t_np))
+
+    rows = [
+        baseline_row(
+            topic="Sparse-data inverse PINN",
+            method="Inverse PINN (data + ODE residual)",
+            plot_label="Inverse PINN",
+            primary_metric="full_state_mse",
+            primary_value=mse(x_pinn, x_true),
+            state_mse=mse(x_pinn, x_true),
+            infected_mse=mse(x_pinn[:, 1], x_true[:, 1]),
+            parameter_l1_error=abs(beta - 0.8) + abs(gamma - 0.2),
+            notes="Learns hidden S/R states and beta/gamma from sparse I(t).",
+        ),
+        baseline_row(
+            topic="Sparse-data inverse PINN",
+            method="Naive sparse-data interpolation",
+            plot_label="Sparse interp.",
+            primary_metric="full_state_mse",
+            primary_value=mse(x_interp, x_true),
+            state_mse=mse(x_interp, x_true),
+            infected_mse=mse(i_interp, x_true[:, 1]),
+            notes="Interpolates observed I(t), then uses S=1-I and R=0.",
+        ),
+        baseline_row(
+            topic="Sparse-data inverse PINN",
+            method="Wrong-parameter SIR rollout",
+            plot_label="Wrong SIR params",
+            primary_metric="full_state_mse",
+            primary_value=mse(x_wrong, x_true),
+            state_mse=mse(x_wrong, x_true),
+            infected_mse=mse(x_wrong[:, 1], x_true[:, 1]),
+            parameter_l1_error=abs(0.55 - 0.8) + abs(0.35 - 0.2),
+            notes="Uses the right model form but inaccurate beta/gamma.",
+        ),
+    ]
+    return rows
+
+
+def roll_known_pidl_baseline(T: float = 20.0, n_grid: int = 400, beta: float = 0.8, gamma: float = 0.2) -> np.ndarray:
+    """Roll out the known SIR mechanism with the hidden PIDL correction removed."""
+    dt = T / (n_grid - 1)
+    x = torch.zeros(n_grid, 3)
+    x[0] = torch.tensor([0.95, 0.05, 0.0])
+    beta_t = torch.tensor(beta)
+    gamma_t = torch.tensor(gamma)
+    for k in range(n_grid - 1):
+        rhs = lambda y: pidl_known_rhs(y, beta_t, gamma_t)
+        x[k + 1] = pidl_rk4_step(x[k], dt, rhs)
+    return to_numpy(x)
+
+
+def evaluate_pidl_baselines(state_net, corr_net) -> list[dict]:
+    """Compare PIDL with the known-mechanism-only baseline."""
+    t_all, x_all = generate_pidl_data(n=400)
+    x_true = to_numpy(x_all)
+    x_known = roll_known_pidl_baseline(n_grid=len(t_all))
+
+    state_net.eval()
+    corr_net.eval()
+    with torch.no_grad():
+        x_pidl = to_numpy(state_net(t_all.to(DEVICE)))
+        correction_pred = to_numpy(corr_net(x_all.to(DEVICE)))[:, 0]
+    correction_true = to_numpy(1.2 * x_all[:, 0] * x_all[:, 1] * x_all[:, 1])
+
+    return [
+        baseline_row(
+            topic="PIDL missing mechanism",
+            method="PIDL learned correction",
+            plot_label="PIDL correction",
+            primary_metric="full_state_mse",
+            primary_value=mse(x_pidl, x_true),
+            state_mse=mse(x_pidl, x_true),
+            infected_mse=mse(x_pidl[:, 1], x_true[:, 1]),
+            correction_mse=mse(correction_pred, correction_true),
+            notes="Uses known SIR dynamics plus a learned nonlinear correction.",
+        ),
+        baseline_row(
+            topic="PIDL missing mechanism",
+            method="Known SIR only (no missing correction)",
+            plot_label="Known SIR only",
+            primary_metric="full_state_mse",
+            primary_value=mse(x_known, x_true),
+            state_mse=mse(x_known, x_true),
+            infected_mse=mse(x_known[:, 1], x_true[:, 1]),
+            notes="Removes the hidden q S I^2 term and cannot represent behavior change.",
+        ),
+    ]
+
+
+def controlled_rhs_np(x: np.ndarray, u: float, beta: float, gamma: float) -> np.ndarray:
+    """Controlled SIR malware dynamics for independent rollout evaluation."""
+    S, I, R = x
+    return np.array([-beta * S * I - u * S, beta * S * I - gamma * I, gamma * I + u * S], dtype=float)
+
+
+def get_control_value(control_source, t: float) -> float:
+    """Evaluate a constant, Python callable, or PyTorch control network at time t."""
+    if isinstance(control_source, (float, int)):
+        return float(control_source)
+    if isinstance(control_source, torch.nn.Module):
+        device = next(control_source.parameters()).device
+        with torch.no_grad():
+            value = control_source(torch.tensor([[t]], dtype=torch.float32, device=device)).cpu().item()
+        return float(value)
+    return float(control_source(t))
+
+
+def rollout_control_objective(control_source, args: SimpleNamespace, n_grid: int = 400) -> dict:
+    """Evaluate a control policy by rolling the original ODE forward."""
+    t = np.linspace(0.0, args.T, n_grid)
+    dt = args.T / (n_grid - 1)
+    x = np.zeros((n_grid, 3), dtype=float)
+    u = np.zeros(n_grid, dtype=float)
+    x[0] = np.array([0.95, 0.05, 0.0], dtype=float)
+
+    for k in range(n_grid - 1):
+        u[k] = np.clip(get_control_value(control_source, float(t[k])), 0.0, args.umax)
+        f = lambda y: controlled_rhs_np(y, u[k], args.beta, args.gamma)
+        k1 = f(x[k])
+        k2 = f(x[k] + 0.5 * dt * k1)
+        k3 = f(x[k] + 0.5 * dt * k2)
+        k4 = f(x[k] + dt * k3)
+        y = x[k] + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
+        y = np.clip(y, 0.0, 1.0)
+        x[k + 1] = y / max(y.sum(), 1e-12)
+    u[-1] = np.clip(get_control_value(control_source, float(t[-1])), 0.0, args.umax)
+
+    running = args.A * x[:, 1] + 0.5 * args.B * u * u
+    objective = float(np.trapz(running, t) + args.AT * x[-1, 1])
+    return {
+        "objective": objective,
+        "cumulative_infected": float(np.trapz(x[:, 1], t)),
+        "peak_infected": float(np.max(x[:, 1])),
+        "final_infected": float(x[-1, 1]),
+        "mean_control": float(np.mean(u)),
+    }
+
+
+def train_rollout_optimized_control(args: SimpleNamespace, iters: int = 450, n_steps: int = 120):
+    """Train a small neural open-loop controller through differentiable RK4 rollout.
+
+    This is included as a comparison point for the control topic: it optimizes
+    the same original ODE rollout metric used for the fixed-control baselines.
+    """
+    torch.manual_seed(args.seed + 200)
+    control = ControlNet(width=args.width, umax=args.umax).to(DEVICE)
+    opt = torch.optim.Adam(control.parameters(), lr=args.lr)
+    t_grid = torch.linspace(0.0, args.T, n_steps, device=DEVICE).view(-1, 1)
+    dt = args.T / (n_steps - 1)
+    x0 = torch.tensor([[0.95, 0.05, 0.0]], device=DEVICE)
+
+    for _ in range(iters):
+        opt.zero_grad()
+        x = x0
+        running_terms = []
+        for k in range(n_steps):
+            u = control(t_grid[k : k + 1])
+            running_terms.append(args.A * x[:, 1:2] + 0.5 * args.B * u * u)
+            if k == n_steps - 1:
+                break
+            f = lambda y: control_rhs(y, u, args.beta, args.gamma)
+            k1 = f(x)
+            k2 = f(x + 0.5 * dt * k1)
+            k3 = f(x + 0.5 * dt * k2)
+            k4 = f(x + dt * k3)
+            x = x + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
+            x = torch.clamp(x, 0.0, 1.0)
+            x = x / torch.clamp(x.sum(dim=1, keepdim=True), min=1e-12)
+        running = torch.cat(running_terms, dim=0)
+        loss = args.T * running.mean() + args.AT * x[:, 1].mean()
+        loss.backward()
+        opt.step()
+    return control
+
+
+def evaluate_control_baselines(direct_control, pmp_control, rollout_control, args: SimpleNamespace) -> list[dict]:
+    """Compare learned controls against no-control and fixed-control baselines."""
+    fixed_candidates = [(u, rollout_control_objective(u, args)) for u in np.linspace(0.0, args.umax, 21)]
+    best_u, best_fixed = min(fixed_candidates, key=lambda item: item[1]["objective"])
+
+    methods = [
+        ("No control", "No control", 0.0, "Baseline with no patching or mitigation."),
+        (
+            "Fixed moderate control u=0.30",
+            "Fixed u=0.30",
+            0.30,
+            "Simple static control chosen before seeing the trajectory.",
+        ),
+        (
+            f"Best fixed-control grid baseline u={best_u:.2f}",
+            "Best fixed grid",
+            float(best_u),
+            "Strong fixed-control baseline selected by grid search.",
+        ),
+        (
+            "Direct control PINN",
+            "Direct PINN",
+            direct_control,
+            "Control network learned with objective plus ODE-residual loss.",
+        ),
+        (
+            "PMP-informed PINN",
+            "PMP-informed PINN",
+            pmp_control,
+            "Control network learned through Hamiltonian stationarity residuals.",
+        ),
+        (
+            "Rollout-optimized neural control",
+            "Rollout neural",
+            rollout_control,
+            "Extension experiment trained directly against the ODE rollout objective.",
+        ),
+    ]
+
+    rows = []
+    for method, plot_label, control_source, notes in methods:
+        metrics = best_fixed if method.startswith("Best fixed-control") else rollout_control_objective(control_source, args)
+        rows.append(
+            baseline_row(
+                topic="Controlled malware mitigation",
+                method=method,
+                plot_label=plot_label,
+                primary_metric="rollout_objective",
+                primary_value=metrics["objective"],
+                objective=metrics["objective"],
+                cumulative_infected=metrics["cumulative_infected"],
+                peak_infected=metrics["peak_infected"],
+                final_infected=metrics["final_infected"],
+                mean_control=metrics["mean_control"],
+                notes=notes,
+            )
+        )
+    return rows
+
+
+def numeric(row: dict, key: str) -> float:
+    value = row.get(key, "")
+    return float(value) if value != "" else float("nan")
+
+
+def annotate_bars(ax, bars, values, fmt="{:.2g}") -> None:
+    for bar, value in zip(bars, values):
+        if np.isnan(value):
+            continue
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            fmt.format(value),
+            ha="center",
+            va="bottom",
+            fontsize=7.5,
+            rotation=0,
+        )
+
+
+def plot_metric_bars(ax, rows: list[dict], metric: str, title: str, ylabel: str, log: bool = False) -> None:
+    labels = [textwrap.fill(row["plot_label"], 12) for row in rows]
+    values = [numeric(row, metric) for row in rows]
+    colors = ["#2f5d8c", "#db8f34", "#4f9d69", "#8a5fbf", "#c94c4c", "#4c6f79"][: len(rows)]
+    bars = ax.bar(labels, values, color=colors, edgecolor="#222222", linewidth=0.6)
+    if log:
+        positive = [value for value in values if value > 0 and not np.isnan(value)]
+        if positive:
+            ax.set_yscale("log")
+            ax.set_ylim(max(min(positive) * 0.35, 1e-7), max(positive) * 4.0)
+    annotate_bars(ax, bars, values, fmt="{:.2e}" if log else "{:.2f}")
+    ax.set_title(title, fontsize=11)
+    ax.set_ylabel(ylabel)
+    ax.tick_params(axis="x", labelsize=8)
+    ax.grid(axis="y", alpha=0.25)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+
+def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
+    """Create the reader-facing baseline comparison figure."""
+    inverse_rows = [row for row in rows if row["topic"] == "Sparse-data inverse PINN"]
+    pidl_rows = [row for row in rows if row["topic"] == "PIDL missing mechanism"]
+    control_rows = [row for row in rows if row["topic"] == "Controlled malware mitigation"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
+    plot_metric_bars(
+        axes[0, 0],
+        inverse_rows,
+        "state_mse",
+        "Sparse-data inverse PINN: hidden-state error vs baselines",
+        "Full S/I/R MSE (lower is better)",
+        log=True,
+    )
+    plot_metric_bars(
+        axes[0, 1],
+        pidl_rows,
+        "state_mse",
+        "PIDL missing mechanism: learned correction vs known-model baseline",
+        "Full S/I/R MSE (lower is better)",
+        log=True,
+    )
+    plot_metric_bars(
+        axes[1, 0],
+        control_rows,
+        "objective",
+        "Controlled malware mitigation: rollout objective",
+        "Objective: infected burden + control cost",
+        log=False,
+    )
+    plot_metric_bars(
+        axes[1, 1],
+        control_rows,
+        "cumulative_infected",
+        "Controlled malware mitigation: epidemic burden",
+        "Integral of compromised devices",
+        log=False,
+    )
+
+    fig.suptitle("Note 2 Baseline Comparisons: learned methods against simple alternatives", fontsize=15)
+    caption = (
+        "Caption: inverse PINN is compared with sparse interpolation and a wrong-parameter SIR rollout; "
+        "PIDL is compared with the known SIR model without the missing term; control methods are evaluated "
+        "by rolling the original controlled malware model forward under each policy. Lower bars are better."
+    )
+    fig.text(0.5, 0.01, textwrap.fill(caption, 150), ha="center", va="bottom", fontsize=9)
+    fig.tight_layout(rect=(0, 0.06, 1, 0.95))
+    output_path.parent.mkdir(exist_ok=True)
+    fig.savefig(output_path, dpi=190)
+    plt.close(fig)
+
+
+def best_by_topic(rows: list[dict], topic: str) -> dict:
+    topic_rows = [row for row in rows if row["topic"] == topic]
+    return min(topic_rows, key=lambda row: numeric(row, "primary_value"))
+
+
+def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict]) -> None:
     inv = histories["inverse"]
     pidl = histories["pidl"]
     control = histories["control"]
     pmp = histories["pmp"]
+    best_inverse = best_by_topic(baseline_rows, "Sparse-data inverse PINN")
+    best_pidl = best_by_topic(baseline_rows, "PIDL missing mechanism")
+    control_best = min(
+        [row for row in baseline_rows if row["topic"] == "Controlled malware mitigation"],
+        key=lambda row: numeric(row, "objective"),
+    )
     text = f"""# Training Summary
 
 These diagnostics use longer laptop-friendly runs than the smoke tests.  They are intended to show whether each loss is moving toward a stable low-error regime.
@@ -194,16 +600,30 @@ These diagnostics use longer laptop-friendly runs than the smoke tests.  They ar
 | PMP-informed stationarity loss | {pmp[0]["stationarity_loss"]:.3e} | {pmp[-1]["stationarity_loss"]:.3e} | {reduction(pmp[0]["stationarity_loss"], pmp[-1]["stationarity_loss"]):.3e} |
 
 The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
+
+## Baseline Comparison Snapshot
+
+The second figure asks a different question: after training, how do the learned methods compare with simple alternatives?
+
+| Topic | Best method in this run | Metric | Value |
+|---|---|---|---:|
+| Sparse-data inverse PINN | {best_inverse["method"]} | {best_inverse["primary_metric"]} | {numeric(best_inverse, "primary_value"):.3e} |
+| PIDL missing mechanism | {best_pidl["method"]} | {best_pidl["primary_metric"]} | {numeric(best_pidl, "primary_value"):.3e} |
+| Controlled malware mitigation | {control_best["method"]} | rollout objective | {numeric(control_best, "objective"):.3e} |
+
+Open `figures/baseline_comparison.png` for the visual comparison and `experiments/baseline_comparison_metrics.csv` for the exact numbers.
 """
     path.write_text(text)
 
 
-def write_output_preview(path: Path, histories: dict[str, list[dict]]) -> None:
+def write_output_preview(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict]) -> None:
     """Write a short categorized guide to the generated Note 2 outputs."""
     inv = histories["inverse"]
     pidl = histories["pidl"]
     control = histories["control"]
     pmp = histories["pmp"]
+    control_rows = [row for row in baseline_rows if row["topic"] == "Controlled malware mitigation"]
+    best_control = min(control_rows, key=lambda row: numeric(row, "objective"))
     text = f"""# Output Preview
 
 Use this page as the first stop after running `python scripts/run_training_iterations.py`.
@@ -228,7 +648,22 @@ Open `figures/training_iteration_diagnostics.png`.
 | Direct control PINN | objective should fall without losing dynamics consistency |
 | PMP-informed PINN | stationarity and state/costate residuals should move toward a low-error regime |
 
-## 3. First-Versus-Last Snapshot
+## 3. Baseline Comparison Panels
+
+Open `figures/baseline_comparison.png`.
+
+| Panel | What is being compared | Main metric |
+|---|---|---|
+| Sparse-data inverse PINN | learned inverse PINN vs sparse interpolation and wrong-parameter SIR | full S/I/R mean squared error |
+| PIDL missing mechanism | learned correction vs known SIR without the missing term | full S/I/R mean squared error |
+| Controlled malware mitigation: objective | no control, fixed controls, direct PINN, PMP-informed PINN, and rollout-optimized neural control | infected burden plus control cost |
+| Controlled malware mitigation: epidemic burden | same policies as above | integral of compromised devices over time |
+
+Best rollout-control objective in this run: **{best_control["method"]}** with objective **{numeric(best_control, "objective"):.3e}**.
+
+The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss.
+
+## 4. First-Versus-Last Snapshot
 
 | Diagnostic | Start | End | End/start |
 |---|---:|---:|---:|
@@ -237,12 +672,14 @@ Open `figures/training_iteration_diagnostics.png`.
 | Direct control PINN total loss | {control[0]["loss"]:.3e} | {control[-1]["loss"]:.3e} | {reduction(control[0]["loss"], control[-1]["loss"]):.3e} |
 | PMP-informed stationarity loss | {pmp[0]["stationarity_loss"]:.3e} | {pmp[-1]["stationarity_loss"]:.3e} | {reduction(pmp[0]["stationarity_loss"], pmp[-1]["stationarity_loss"]):.3e} |
 
-## 4. Files To Open First
+## 5. Files To Open First
 
 | Category | File |
 |---|---|
 | Summary | `experiments/training_summary.md` |
 | Learning curves | `figures/training_iteration_diagnostics.png` |
+| Baseline comparison | `figures/baseline_comparison.png` |
+| Baseline metrics | `experiments/baseline_comparison_metrics.csv` |
 | Inverse PINN CSV | `experiments/inverse_pinn_training_history.csv` |
 | PIDL CSV | `experiments/pidl_training_history.csv` |
 | Direct control CSV | `experiments/control_pinn_training_history.csv` |
@@ -259,10 +696,16 @@ def main() -> None:
     exp_dir = ROOT / "experiments"
     fig_dir = ROOT / "figures"
 
-    _, _, _, inverse_history = train_inverse_pinn(inverse_args(args.iters))
-    _, _, pidl_history = train_pidl(pidl_args(args.iters))
-    _, _, control_history = train_control_pinn(control_args(args.iters))
-    _, _, _, pmp_history = train_pmp_pinn(pmp_args(args.iters))
+    inv_args = inverse_args(args.iters)
+    pidl_cfg = pidl_args(args.iters)
+    control_cfg = control_args(args.iters)
+    pmp_cfg = pmp_args(args.iters)
+
+    inverse_model, beta, gamma, inverse_history = train_inverse_pinn(inv_args)
+    pidl_state, pidl_correction, pidl_history = train_pidl(pidl_cfg)
+    _, direct_control, control_history = train_control_pinn(control_cfg)
+    _, _, pmp_control, pmp_history = train_pmp_pinn(pmp_cfg)
+    rollout_control = train_rollout_optimized_control(control_cfg)
 
     histories = {
         "inverse": inverse_history,
@@ -270,16 +713,24 @@ def main() -> None:
         "control": control_history,
         "pmp": pmp_history,
     }
+    baseline_rows = []
+    baseline_rows.extend(evaluate_inverse_baselines(inverse_model, beta, gamma, inv_args))
+    baseline_rows.extend(evaluate_pidl_baselines(pidl_state, pidl_correction))
+    baseline_rows.extend(evaluate_control_baselines(direct_control, pmp_control, rollout_control, control_cfg))
+
     write_csv(exp_dir / "inverse_pinn_training_history.csv", inverse_history)
     write_csv(exp_dir / "pidl_training_history.csv", pidl_history)
     write_csv(exp_dir / "control_pinn_training_history.csv", control_history)
     write_csv(exp_dir / "pmp_informed_pinn_training_history.csv", pmp_history)
-    write_output_preview(exp_dir / "OUTPUT_PREVIEW.md", histories)
-    write_summary(exp_dir / "training_summary.md", histories)
+    write_csv(exp_dir / "baseline_comparison_metrics.csv", baseline_rows)
+    write_output_preview(exp_dir / "OUTPUT_PREVIEW.md", histories, baseline_rows)
+    write_summary(exp_dir / "training_summary.md", histories, baseline_rows)
     plot_training_diagnostics(fig_dir / "training_iteration_diagnostics.png", histories)
+    plot_baseline_comparison(fig_dir / "baseline_comparison.png", baseline_rows)
 
     print(f"Wrote experiment CSV files to {exp_dir}")
     print(f"Wrote training diagnostic figure to {fig_dir / 'training_iteration_diagnostics.png'}")
+    print(f"Wrote baseline comparison figure to {fig_dir / 'baseline_comparison.png'}")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 \documentclass[11pt,a4paper]{article}
-\input{lecture_style}
+\input{tutorial_style}
 
 \begin{document}
-\lecturetitle{Code Running Guide}{How to Run and Extend the Note 2 Python Examples}{Installation, smoke tests, training diagnostics, outputs, and troubleshooting}{Companion to the PINN/PIDL cyber-control lecture note}
+\tutorialtitle{Code Running Guide}{How to Run and Extend the Note 2 Python Examples}{Installation, smoke tests, training diagnostics, outputs, and troubleshooting}{Companion to the PINN/PIDL cyber-control tutorial note}
 \tableofcontents
 \newpage
 \lhead{\small Note 2 Code Running Guide}
@@ -29,6 +29,7 @@ The repository is organized around four teaching experiments:
   experiments/
     OUTPUT_PREVIEW.md
     training_summary.md
+    baseline_comparison_metrics.csv
     inverse_pinn_training_history.csv
     pidl_training_history.csv
     control_pinn_training_history.csv
@@ -38,6 +39,7 @@ The repository is organized around four teaching experiments:
     pidl_missing_mechanism.png
     neural_architectures.png
     training_iteration_diagnostics.png
+    baseline_comparison.png
 \end{verbatim}
 
 \section{Installation}
@@ -95,8 +97,9 @@ python scripts/run_training_iterations.py --iters 600
 Expected output:
 \begin{itemize}
 \item CSV histories under \texttt{experiments/};
+\item baseline metrics in \texttt{experiments/baseline\_comparison\_metrics.csv};
 \item \texttt{OUTPUT\_PREVIEW.md} and \texttt{training\_summary.md};
-\item \texttt{figures/training\_iteration\_diagnostics.png}.
+\item \texttt{figures/training\_iteration\_diagnostics.png} and \texttt{figures/baseline\_comparison.png}.
 \end{itemize}
 
 \section{How to Interpret Outputs}
@@ -115,7 +118,7 @@ Boundary loss & Whether the state initial condition and costate terminal conditi
 \end{longtable}
 
 \section{Output Map}
-Start with \texttt{experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, and file. Then inspect \texttt{figures/training\_iteration\_diagnostics.png} and the CSV file for the experiment you are studying.
+Start with \texttt{experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, baseline-comparison panel, and file. Then inspect \texttt{figures/training\_iteration\_diagnostics.png}, \texttt{figures/baseline\_comparison.png}, and the CSV file for the experiment you are studying.
 
 \begin{longtable}{p{0.28\textwidth}p{0.62\textwidth}}
 \toprule
@@ -125,7 +128,9 @@ File & What it shows \\
 \texttt{pidl\_}\newline\texttt{training\_history.csv} & Known-mechanism residual loss, correction regularization, and mean learned correction. \\
 \texttt{control\_pinn\_}\newline\texttt{training\_history.csv} & Objective, state residual, initial-condition loss, and mean control. \\
 \texttt{pmp\_informed\_pinn\_}\newline\texttt{training\_history.csv} & State, costate, stationarity, and boundary residuals. \\
+\texttt{baseline\_comparison\_}\newline\texttt{metrics.csv} & Topic-specific baseline metrics for inverse PINN, PIDL, and controlled malware mitigation. \\
 \texttt{training\_iteration\_}\newline\texttt{diagnostics.png} & Four-panel comparison of the main loss and residual signals. \\
+\texttt{baseline\_comparison.png} & Learned methods compared with sparse interpolation, wrong-parameter SIR, known-SIR-only dynamics, and no/fixed-control baselines. \\
 \bottomrule
 \end{longtable}
 

@@ -17,9 +17,9 @@ Source files are in `latex/`.  The source is included for inspection and adaptat
 
 For a practical first pass, use `START_HERE.md` before diving into the LaTeX source.  It points to the code, scripts, figures, and experiment outputs by task.
 
-The runnable code mirrors this lecture order:
+The runnable code mirrors this tutorial order:
 
-| Lecture idea | Code |
+| Tutorial idea | Code |
 |---|---|
 | Sparse-data inverse PINN | `src/inverse_pinn_sir_malware.py` |
 | PIDL with known dynamics plus missing mechanism | `src/pidl_unknown_mechanism.py` |

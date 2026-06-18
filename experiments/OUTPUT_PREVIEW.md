@@ -22,7 +22,22 @@ Open `figures/training_iteration_diagnostics.png`.
 | Direct control PINN | objective should fall without losing dynamics consistency |
 | PMP-informed PINN | stationarity and state/costate residuals should move toward a low-error regime |
 
-## 3. First-Versus-Last Snapshot
+## 3. Baseline Comparison Panels
+
+Open `figures/baseline_comparison.png`.
+
+| Panel | What is being compared | Main metric |
+|---|---|---|
+| Sparse-data inverse PINN | learned inverse PINN vs sparse interpolation and wrong-parameter SIR | full S/I/R mean squared error |
+| PIDL missing mechanism | learned correction vs known SIR without the missing term | full S/I/R mean squared error |
+| Controlled malware mitigation: objective | no control, fixed controls, direct PINN, PMP-informed PINN, and rollout-optimized neural control | infected burden plus control cost |
+| Controlled malware mitigation: epidemic burden | same policies as above | integral of compromised devices over time |
+
+Best rollout-control objective in this run: **Rollout-optimized neural control** with objective **6.153e+00**.
+
+The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss.
+
+## 4. First-Versus-Last Snapshot
 
 | Diagnostic | Start | End | End/start |
 |---|---:|---:|---:|
@@ -31,12 +46,14 @@ Open `figures/training_iteration_diagnostics.png`.
 | Direct control PINN total loss | 9.360e+01 | 2.636e-01 | 2.816e-03 |
 | PMP-informed stationarity loss | 2.187e-01 | 3.364e-03 | 1.539e-02 |
 
-## 4. Files To Open First
+## 5. Files To Open First
 
 | Category | File |
 |---|---|
 | Summary | `experiments/training_summary.md` |
 | Learning curves | `figures/training_iteration_diagnostics.png` |
+| Baseline comparison | `figures/baseline_comparison.png` |
+| Baseline metrics | `experiments/baseline_comparison_metrics.csv` |
 | Inverse PINN CSV | `experiments/inverse_pinn_training_history.csv` |
 | PIDL CSV | `experiments/pidl_training_history.csv` |
 | Direct control CSV | `experiments/control_pinn_training_history.csv` |

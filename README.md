@@ -17,7 +17,7 @@ bash scripts/run_smoke_tests.sh
 python scripts/generate_figures.py
 ```
 
-For longer loss-curve diagnostics:
+For longer diagnostics and baseline comparisons:
 
 ```bash
 python scripts/run_training_iterations.py
@@ -28,7 +28,7 @@ python scripts/run_training_iterations.py
 | Need | Open |
 |---|---|
 | Short orientation | `START_HERE.md` |
-| Lecture narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
+| Tutorial narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
 | Source-code map | `src/README.md` |
 | Script and output map | `scripts/README.md` |
 | Training curves and CSVs | `experiments/README.md` |
@@ -70,6 +70,10 @@ The training diagnostics plot compares the longer teaching runs for inverse PINN
 
 ![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
 
+The baseline comparison plot asks a second question: after training, how do the learned methods compare with simple alternatives?  It uses method-specific baselines: sparse interpolation and wrong-parameter SIR for inverse PINNs, known-SIR-only dynamics for PIDL, and no/fixed/learned controls for malware mitigation.
+
+![Baseline comparison for learned methods](figures/baseline_comparison.png)
+
 ## Main Outputs
 
 | Output | Purpose |
@@ -77,7 +81,9 @@ The training diagnostics plot compares the longer teaching runs for inverse PINN
 | `figures/inverse_pinn_sparse_data.png` | sparse-observation inverse-learning setup |
 | `figures/pidl_missing_mechanism.png` | known dynamics plus learned missing mechanism |
 | `figures/training_iteration_diagnostics.png` | longer inverse PINN, PIDL, control PINN, and PMP-informed diagnostics |
+| `figures/baseline_comparison.png` | learned methods compared with method-specific baselines |
 | `experiments/OUTPUT_PREVIEW.md` | categorized first-stop summary after longer experiment runs |
+| `experiments/baseline_comparison_metrics.csv` | exact metric values behind the baseline comparison plot |
 | `experiments/*.csv` | logged histories behind the training plot |
 
 ## Validation
