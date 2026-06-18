@@ -2,183 +2,122 @@
 \input{lecture_style}
 
 \begin{document}
-\lecturetitle{Implementation Companion}{Python Examples for Cyber Control, Differential Games, RL/MADRL, PINN, and PIDL}{From mathematical formulation to reproducible experiments}{Companion to Lecture Notes 1 and 2}
+\lecturetitle{Implementation Companion}{Python Examples for Note 2 PINN/PIDL Cyber Control}{From loss terms to reproducible experiments}{Companion to the PINN/PIDL cyber-control lecture note}
 \tableofcontents
 \newpage
+\lhead{\small Note 2 Implementation Companion}
 
 \section{Purpose}
-This companion explains the accompanying Python files. The goal is not to provide production-ready benchmark software. The goal is to make the conversion from equations to code explicit and extendable. Each script is short enough to read, but structured enough to become a research prototype.
+This companion maps the Note 2 equations to the Python files in this repository. The aim is transparency: each example should make clear which unknown function is represented by a neural network, which residual is minimized, what data are needed, and what outputs should be inspected.
 
 \section{File Map}
-\begin{longtable}{p{0.28\textwidth}p{0.62\textwidth}}
+\begin{longtable}{p{0.34\textwidth}p{0.56\textwidth}}
 \toprule
-File & Role \\
+Python file & What it demonstrates \\
 \midrule
-\small\texttt{cyber\_dynamics.py} & shared ODE and RK4 utilities; controlled SIR and hybrid RHS functions \\
-\small\texttt{cyber\_hybrid\_env.py} & sampled-data environment with continuous flow, jump map, and hybrid actions \\
-\small\texttt{fbsm\_malware\_baseline.py} & open-loop FBSM baseline from PMP \\
-\small\texttt{ddqn\_cyber\_defense.py} & discrete-action DDQN defender against a scripted attacker \\
-\small\texttt{madrl\_ctde}\newline\small\texttt{\_hybrid\_game.py} & compact CTDE/MADRL attacker-defender example \\
-\small\texttt{inverse\_pinn}\newline\small\texttt{\_sir\_malware.py} & inverse PINN for learning $\beta$ and $\gamma$ from sparse $I(t)$ data \\
-\small\texttt{pidl\_unknown}\newline\small\texttt{\_mechanism.py} & known SIR mechanism plus learned missing correction term \\
-\small\texttt{control\_pinn}\newline\small\texttt{\_malware.py} & direct neural-control PINN \\
-\small\texttt{pmp\_informed}\newline\small\texttt{\_pinn\_malware.py} & state-costate-control PMP-informed PINN \\
+\small\texttt{inverse\_pinn\_sir\_malware.py} & Inverse PINN: learn hidden S/I/R trajectories and unknown SIR parameters from sparse infected-state observations. \\
+\small\texttt{pidl\_unknown\_mechanism.py} & PIDL correction: keep the known SIR mechanism explicit and learn a missing nonlinear transfer term. \\
+\small\texttt{control\_pinn\_malware.py} & Direct neural-control PINN: train state and control networks using objective, residual, and initial-condition losses. \\
+\small\texttt{pmp\_informed\_pinn\_malware.py} & PMP-informed PINN: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
+\small\texttt{run\_training\_iterations.py} & Rebuilds CSV histories, \texttt{OUTPUT\_PREVIEW.md}, \texttt{training\_summary.md}, and the four-panel diagnostic figure. \\
 \bottomrule
 \end{longtable}
 
-\section{General Implementation Architecture}
-A clean implementation should separate four layers:
+\section{Common Implementation Pattern}
+All four examples follow the same practical pattern:
 \begin{enumerate}
-\item model layer: ODE right-hand side, parameters, constraints;
-\item environment layer: reset, action decoding, jump map, ODE integration, reward;
-\item algorithm layer: FBSM, DDQN, MADRL, PINN, PIDL;
-\item evaluation layer: baselines, robustness, plots, logs, seeds.
+\item define the cyber propagation model and parameter ranges;
+\item choose the neural objects, such as state, correction, control, or costate networks;
+\item sample observed data and collocation points;
+\item build data, residual, boundary, objective, or PMP losses;
+\item train with Adam and log each important loss component separately;
+\item validate by inspecting trajectories, residuals, parameter estimates, and baseline comparisons.
 \end{enumerate}
-The code folder follows this structure. The environment is intentionally independent of DQN, PPO, or MADRL so that different learning algorithms can reuse the same cyber model.
 
-\section{ODE and Hybrid Environment}
-The central environment step is
-\begin{equation}
-\boxed{s_k}\rightarrow\boxed{a_D^k,a_A^k}\rightarrow\boxed{x_k^+=G(x_k,a_k)}\rightarrow\boxed{x_{k+1}=\operatorname{RK4}(f,x_k^+)}\rightarrow\boxed{r_D^k,r_A^k}.
-\end{equation}
-The implementation is in \texttt{cyber\_hybrid\_env.py}. The most important design choice is to keep jump effects separate from continuous flow effects.
+\section{Inverse PINN}
+The inverse PINN observes sparse samples of the infected component \(I(t)\). The state network \(N_\theta(t)\) outputs \(\hat{x}(t)=[\hat{S},\hat{I},\hat{R}]\), and trainable positive parameters represent \(\hat{\beta}\) and \(\hat{\gamma}\).
 
-\begin{lstlisting}[style=pythonstyle,caption={Core idea of a sampled-data hybrid environment step.}]
-def step(self, defender_action, attacker_action):
-    dpar = self.defense_parameters(defender_action)
-    apar = self.attack_parameters(attacker_action)
-    pre_jump = self.state.copy()
-    post_jump = self.jump_map(pre_jump, dpar)
-    rhs = lambda x, t: hybrid_rhs(x, dpar, apar, self.cfg.params)
-    next_state, path = rk4_integrate(rhs, post_jump, t0=self.t*self.cfg.dt,
-                                     dt=self.cfg.dt, substeps=self.cfg.substeps,
-                                     project=project_simplex3)
-    reward = compute_reward(path, dpar, apar)
-    return next_state, reward, done, info
-\end{lstlisting}
+\begin{methodbox}
+\textbf{Loss structure.}
+\[
+\Loss = \Loss_{\rm data} + w_{\rm ic}\Loss_{\rm ic} + w_{\rm ode}\Loss_{\rm ode}.
+\]
+The data term matches sparse \(I(t)\) observations, the initial-condition term anchors \(x(0)\), and the ODE residual enforces SIR dynamics at collocation points.
+\end{methodbox}
 
-\subsection{How to extend this environment}
-To extend from the simple $[S,I,R,z]$ model to a degree-based network model, replace the state vector with
-\begin{equation}
-x=[S_1,I_1,R_1,\ldots,S_K,I_K,R_K,z]
-\end{equation}
-where $K$ is the number of degree classes. Then update the RHS so that infection pressure for degree class $k$ uses a degree-weighted infected neighbor probability. The RL environment interface does not change.
-
-\section{FBSM Baseline}
-The FBSM file solves a continuous-control malware problem. It should be used as a classical baseline when the model is known and the control is open-loop. It is not a substitute for DDQN or MADRL because it does not learn a feedback policy.
-
-\begin{lstlisting}[style=pythonstyle,caption={FBSM update logic.}]
-for iteration in range(max_iter):
-    # forward state integration using current u(t)
-    for k in range(n):
-        x[k+1] = rk4_state_step(x[k], u[k], h, beta, gamma)
-    # backward costate integration from terminal condition
-    lambda[n] = terminal_gradient
-    for k in range(n, 0, -1):
-        lambda[k-1] = rk4_costate_step_backward(x[k], lambda[k], u[k], h)
-    # stationarity update and relaxation
-    u_new[k] = clip(S[k]*(lambda_S[k]-lambda_R[k])/B, 0, u_max)
-    u = relax*u_new + (1-relax)*u
-\end{lstlisting}
-
-\section{DDQN Example}
-The DDQN example trains the defender with discrete actions. The attacker is scripted so that the defender first learns against a stable environment. This is the recommended first step before full MADRL.
-
-\begin{workflowbox}
-\textbf{DDQN workflow.}
-\begin{enumerate}
-\item initialize Q-network and target Q-network;
-\item collect transitions $(s,a,r,s',d)$ using epsilon-greedy exploration;
-\item store transitions in replay buffer;
-\item sample mini-batches;
-\item compute DDQN target;
-\item update the online network;
-\item periodically copy online weights to target weights;
-\item validate against static and rule-based policies.
-\end{enumerate}
-\end{workflowbox}
-
-\section{MADRL / CTDE Example}
-The MADRL file uses decentralized actors and centralized critics. It is intentionally compact. The defender and attacker both receive the same state observation in the example, but this can be changed to partial observations.
-
-\subsection{General extension to richer MADRL}
-For serious experiments, add:
-\begin{itemize}
-\item generalized advantage estimation (GAE);
-\item clipped PPO ratios for MAPPO;
-\item opponent pools to reduce cycling;
-\item multiple seeds and cross-play matrices;
-\item best-response retraining as an approximate exploitability test;
-\item separate observation functions for attacker and defender.
-\end{itemize}
-
-\section{Inverse PINN Example}
-The inverse PINN learns $\beta$ and $\gamma$ from sparse observations of $I(t)$. It uses softmax for the state network and softplus for positive parameters.
-
-\begin{lstlisting}[style=pythonstyle,caption={PINN residual construction.}]
+\begin{lstlisting}[style=pythonstyle,caption={Core inverse-PINN residual idea.}]
 x_f = model(t_f)
-dxdt = torch.cat([
-    torch.autograd.grad(x_f[:, j].sum(), t_f, create_graph=True)[0]
-    for j in range(3)
-], dim=1)
-loss_ode = torch.mean((dxdt - sir_rhs(x_f, beta, gamma))**2)
-loss = loss_data + w_ic*loss_ic + w_ode*loss_ode
+dxdt = time_derivative(x_f, t_f)
+rhs = sir_rhs(x_f, beta, gamma)
+loss_ode = torch.mean((dxdt - rhs) ** 2)
+loss = loss_data + w_ic * loss_ic + w_ode * loss_ode
 \end{lstlisting}
 
-\section{PIDL Missing-Mechanism Example}
-The PIDL script uses
+\section{PIDL With A Missing Mechanism}
+PIDL should not learn the entire dynamics when a trusted mechanism is already known. In this example the known SIR right-hand side remains explicit, and a correction network \(g_\omega(t,x)\) learns the missing nonlinear transfer.
+
 \begin{equation}
-\dot{x}=f_{\mathrm{known}}(x;\beta,\gamma)+B g_\phi(x).
+\dot{x}=f_{\rm known}(x;\beta,\gamma)+B g_\omega(t,x).
 \end{equation}
-The correction network learns only the missing transfer from $S$ to $I$, not the entire vector field. This is preferable when the known mechanism is trusted but incomplete.
 
-\section{Control PINN and PMP-informed PINN}
-\subsection{Direct control PINN}
-The direct control PINN minimizes a control objective plus state residuals. It is easy to code and useful for teaching.
+\begin{methodbox}
+\textbf{What to inspect.}
+The correction term should reduce residual error, but it should not become an unconstrained replacement for the known model. Inspect residual loss, correction regularization, and mean correction together.
+\end{methodbox}
 
-\subsection{PMP-informed PINN}
-The PMP-informed PINN adds costate and stationarity residuals. This is the neural analogue of solving the PMP optimality system:
+\section{Direct Control PINN}
+The direct control PINN trains a state network \(\hat{x}_\theta(t)\) and a bounded control network \(\hat{u}_\phi(t)\). It minimizes a malware-control objective while enforcing the controlled SIR dynamics.
+
 \begin{equation}
-\Loss=w_x\|\dot{x}-f\|^2+w_\lambda\|\dot{\lambda}+H_x\|^2+w_u\|H_u\|^2+w_b\Loss_{\mathrm{boundary}}.
+\Loss = J(\hat{x},\hat{u}) + w_{\rm res}\|\dot{\hat{x}}-f(\hat{x},\hat{u})\|^2 + w_{\rm ic}\|\hat{x}(0)-x_0\|^2.
 \end{equation}
-Use this formulation when the paper claims a strong connection to PMP.
 
-\section{Evaluation Scripts to Add in Future Work}
-The current scripts print losses and returns. A research version should save:
+This method is simple and useful, but it is a direct optimization method. If a project claims PMP consistency, use the PMP-informed residuals below.
+
+\section{PMP-Informed PINN}
+The PMP-informed PINN adds a costate network \(\hat{\lambda}_\psi(t)\) and enforces the optimality system rather than only the state equation.
+
+\begin{equation}
+\Loss=w_x\|\dot{x}-f(x,u)\|^2
+    +w_\lambda\|\dot{\lambda}+H_x(x,u,\lambda)\|^2
+    +w_u\|H_u(x,u,\lambda)\|^2
+    +w_b\Loss_{\rm boundary}.
+\end{equation}
+
+\begin{methodbox}
+\textbf{Why the stationarity residual matters.}
+A small state residual says the trajectory satisfies the dynamics. A small stationarity residual gives stronger evidence that the learned control is compatible with PMP necessary conditions.
+\end{methodbox}
+
+\section{Training Diagnostics}
+The diagnostic figure generated by \texttt{scripts/run\_training\_iterations.py} has four panels:
 \begin{itemize}
-\item CSV trajectories for $S,I,R,z$;
-\item learned parameter histories;
-\item training curves;
-\item baseline comparison tables;
-\item robustness results across parameter perturbations;
-\item policy action distributions over time.
+\item sparse-data inverse PINN: total loss and ODE residual;
+\item PIDL missing mechanism: residual loss and learned correction size;
+\item direct control PINN: objective, state residual, and mean control;
+\item PMP-informed PINN: state, costate, stationarity, and total residuals.
 \end{itemize}
+Start with \texttt{experiments/OUTPUT\_PREVIEW.md}, then open the CSV file behind the panel that matters for the method claim.
 
-\section{Complex Extensions}
-\subsection{Degree-based HODGE-style model}
-To implement a degree-based propaganda model, let the state contain $P_k$ and $C_k$ for each degree $k$. The force of influence uses
-\begin{equation}
-\Theta_P(t)=\frac{\sum_k k p_k P_k(t)}{\sum_k k p_k},\qquad
-\Theta_C(t)=\frac{\sum_k k p_k C_k(t)}{\sum_k k p_k}.
-\end{equation}
-Continuous propaganda investment changes ODE rates, while impulsive counter-propaganda applies a jump map at selected epochs. The same environment structure still applies.
-
-\subsection{Feedback control PINN}
-Change $u(t)$ to $u(x,t)$:
-\begin{equation}
-\hat{u}_\Phi(t)=N_\Phi(t)\quad\longrightarrow\quad \hat{u}_\Phi(x,t)=N_\Phi([x,t]).
-\end{equation}
-Then train on many initial conditions. This is closer to a feedback policy and more comparable to RL.
-
-\section{Suggested Project Sequence}
+\section{Extension Rules}
 \begin{enumerate}
-\item Run FBSM and DDQN on the same simple malware model.
-\item Add hybrid actions and compare no defense, static patch, rule-based, DDQN.
-\item Add attacker learning and compare independent learning with CTDE.
-\item Learn unknown parameters using inverse PINN.
-\item Add PIDL correction for missing mechanisms.
-\item Add PMP-informed PINN and compare with FBSM.
-\item Extend to APT or misinformation dynamics.
+\item If observations are noisy, add a validation split and report parameter uncertainty.
+\item If the missing mechanism may depend on interventions, give the correction network access to \((t,x,u)\), not only \((t,x)\).
+\item If a control should be deployable as feedback, use a control network \(\pi(t,x)\) and train over multiple initial conditions.
+\item If the model is high-dimensional, start with degree-level compartments before moving to full node-level or graph-neural PINNs.
+\item If dynamics have impulses or jumps, train separate intervals or include jump residuals explicitly.
 \end{enumerate}
+
+\section{Minimal Reporting Checklist}
+A clear Note 2 experiment should report:
+\begin{itemize}
+\item model equations and true or assumed parameters;
+\item observed variables, observation times, and noise level;
+\item collocation sampling strategy;
+\item neural objects and architecture sizes;
+\item every loss term and its weight;
+\item learned parameters or learned controls;
+\item independent checks such as held-out data, ODE-solver validation, or comparison with FBSM/control baselines.
+\end{itemize}
 
 \end{document}

@@ -77,6 +77,7 @@ The training diagnostics plot compares the longer teaching runs for inverse PINN
 | `figures/inverse_pinn_sparse_data.png` | sparse-observation inverse-learning setup |
 | `figures/pidl_missing_mechanism.png` | known dynamics plus learned missing mechanism |
 | `figures/training_iteration_diagnostics.png` | longer inverse PINN, PIDL, control PINN, and PMP-informed diagnostics |
+| `experiments/OUTPUT_PREVIEW.md` | categorized first-stop summary after longer experiment runs |
 | `experiments/*.csv` | logged histories behind the training plot |
 
 ## Validation

@@ -1,0 +1,43 @@
+# Output Preview
+
+Use this page as the first stop after running `python scripts/run_training_iterations.py`.
+
+## 1. What Each Experiment Checks
+
+| Experiment | Main question | Key diagnostics |
+|---|---|---|
+| Sparse-data inverse PINN | Can sparse infected observations recover hidden S/I/R states and beta/gamma? | total loss, data loss, ODE residual, learned beta/gamma |
+| PIDL missing mechanism | Can a small correction network represent the missing nonlinear propagation term? | residual loss, correction regularizer, mean learned correction |
+| Direct control PINN | Can state/control networks reduce malware while satisfying the ODE? | objective, state residual, initial-condition loss, mean control |
+| PMP-informed PINN | Can state, costate, and control networks satisfy PMP optimality conditions? | state residual, costate residual, stationarity loss, boundary loss |
+
+## 2. Training Diagnostic Panels
+
+Open `figures/training_iteration_diagnostics.png`.
+
+| Panel | What to check |
+|---|---|
+| Sparse-data inverse PINN | total loss and ODE residual should decrease together |
+| PIDL missing mechanism | residual loss should fall while the correction remains interpretable |
+| Direct control PINN | objective should fall without losing dynamics consistency |
+| PMP-informed PINN | stationarity and state/costate residuals should move toward a low-error regime |
+
+## 3. First-Versus-Last Snapshot
+
+| Diagnostic | Start | End | End/start |
+|---|---:|---:|---:|
+| Inverse PINN total loss | 1.286e+00 | 1.255e-03 | 9.756e-04 |
+| PIDL total loss | 2.543e+00 | 3.564e-03 | 1.401e-03 |
+| Direct control PINN total loss | 9.360e+01 | 2.636e-01 | 2.816e-03 |
+| PMP-informed stationarity loss | 2.187e-01 | 3.364e-03 | 1.539e-02 |
+
+## 4. Files To Open First
+
+| Category | File |
+|---|---|
+| Summary | `experiments/training_summary.md` |
+| Learning curves | `figures/training_iteration_diagnostics.png` |
+| Inverse PINN CSV | `experiments/inverse_pinn_training_history.csv` |
+| PIDL CSV | `experiments/pidl_training_history.csv` |
+| Direct control CSV | `experiments/control_pinn_training_history.csv` |
+| PMP-informed CSV | `experiments/pmp_informed_pinn_training_history.csv` |

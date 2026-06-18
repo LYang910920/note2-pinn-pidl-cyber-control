@@ -6,7 +6,7 @@ Scripts are grouped by purpose: quick validation, figure generation, and longer 
 |---|---|---|---|
 | `run_smoke_tests.sh` | Fast confidence check for every executable component. | `bash scripts/run_smoke_tests.sh` | Console output only |
 | `generate_figures.py` | Rebuild static explanatory figures used by the README. | `python scripts/generate_figures.py` | `figures/*.png` |
-| `run_training_iterations.py` | Run longer inverse PINN, PIDL, direct-control, and PMP-informed diagnostics. | `python scripts/run_training_iterations.py` | `experiments/*.csv`, `experiments/training_summary.md`, `figures/training_iteration_diagnostics.png` |
+| `run_training_iterations.py` | Run longer inverse PINN, PIDL, direct-control, and PMP-informed diagnostics. | `python scripts/run_training_iterations.py` | `experiments/*.csv`, `experiments/OUTPUT_PREVIEW.md`, `experiments/training_summary.md`, `figures/training_iteration_diagnostics.png` |
 
 ## Runtime Notes
 
@@ -26,4 +26,4 @@ The checked-in CSV files and figures are examples from one deterministic teachin
 |---|---|---|
 | `run_smoke_tests.sh` | installed dependencies from `requirements.txt` | exits with status 0 and unit-test summary |
 | `generate_figures.py` | working PyTorch/Matplotlib environment | rewrites the PNG files under `figures/` |
-| `run_training_iterations.py` | working PyTorch/Matplotlib environment | rewrites training CSVs, summary markdown, and the diagnostic PNG |
+| `run_training_iterations.py` | working PyTorch/Matplotlib environment | rewrites training CSVs, output preview, summary markdown, and the diagnostic PNG |
