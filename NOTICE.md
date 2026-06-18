@@ -15,4 +15,4 @@ Third-party Python dependencies keep their own licenses:
 | PyTorch | autograd, neural networks, and PINN/PIDL training |
 | Matplotlib | figure generation |
 
-If you reuse the material in coursework, reports, or derivative repositories, keep the copyright notice, cite the repository or lecture note title, and clearly mark any changes you make.
+If you reuse the material in coursework, reports, or derivative repositories, keep the copyright notice, cite the repository or tutorial note title, and clearly mark any changes you make.

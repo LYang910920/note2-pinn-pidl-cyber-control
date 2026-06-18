@@ -11,7 +11,8 @@ Recommended order:
 5. Read the direct-control PINN before the PMP-informed PINN.
 6. Use `implementation_companion.pdf` when mapping losses and residuals to code.
 7. Use `code_run_guide.pdf` for run commands and troubleshooting.
-8. Use `EXTENDING.md` before adapting the examples to larger graph or cyber-security models.
+8. Use `PARAMETERS.md` before changing model parameters, loss weights, or neural-training hyperparameters.
+9. Use `EXTENDING.md` before adapting the examples to larger graph or cyber-security models.
 
 Source files are in `latex/`.  The source is included for inspection and adaptation; the checked-in PDF is the version intended for reading.
 

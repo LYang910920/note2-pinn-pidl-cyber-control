@@ -8,6 +8,14 @@ state network -> dynamics residual -> data/boundary loss -> diagnostics
 
 ## Extension Path
 
+Start by running:
+
+```bash
+python src/experiment_profiles.py
+```
+
+That command prints the method profiles. Pick the closest one before editing code, because it records the intended method, key loss terms, first functions to edit, and paper-extension route.
+
 1. **Change the state.** Add compartments, node-level states, uncertain parameters, budget states, or exogenous features.
 2. **Preserve constraints.** Use `softmax`, sigmoid transforms, projection layers, or penalty terms to keep states and controls meaningful.
 3. **Replace the dynamics.** Start by changing `sir_rhs` or `f_state`. Then update residual losses and tests.
@@ -18,6 +26,17 @@ state network -> dynamics residual -> data/boundary loss -> diagnostics
 ## Scaling To Network Models
 
 For larger models, move from population-level SIR states to degree-level PINNs, node-level vector states, graph-neural PINNs, operator-learning models, or hybrid neural control with jump losses. Keep the first version small and testable before scaling architecture or data.
+
+## From Tutorial Code To Paper Models
+
+| Paper-model ingredient | First teaching hook | What to preserve while extending |
+|---|---|---|
+| More compartments or hidden states | `StateNet`, `sir_rhs`, `f_state` | state constraints and residual dimensions |
+| Sparse, noisy, or partial observations | `generate_data`, data loss blocks | separate data, initial/boundary, and residual losses |
+| Unknown cyber mechanisms | `pidl_unknown_mechanism.py` | known physics term plus learned correction term |
+| Multiple controls or constraints | `ControlNet`, `rhs`, `hamiltonian` | bounded control transform and explicit objective terms |
+| PMP-informed paper model | `f_state`, `hamiltonian`, costate residual block | live autograd graph for `H_x` and `H_u` |
+| Network or graph PINNs | profile `paper_extension` notes | a small synthetic case before large data or GNN architecture |
 
 ## Related Learning Path
 

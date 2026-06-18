@@ -29,7 +29,9 @@ python scripts/run_training_iterations.py
 |---|---|
 | Short orientation | `START_HERE.md` |
 | Tutorial narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
+| Parameter and hyperparameter reference | `docs/PARAMETERS.md` |
 | Source-code map | `src/README.md` |
+| Student extension profiles | `src/experiment_profiles.py` |
 | Script and output map | `scripts/README.md` |
 | Training curves and CSVs | `experiments/README.md` |
 | Extensions and scaling | `docs/EXTENDING.md` |
@@ -92,9 +94,14 @@ The baseline comparison plot asks a second question: after training, how do the 
 
 These examples are teaching code, not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
 
-## Related Repository
+Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios.
 
-For the optimal-control and differential-game foundation behind PMP residuals and network-scale extensions, see https://github.com/LYang910920/network-control-differential-games.
+## Related Tutorial Repositories
+
+| Repository | Use it for |
+|---|---|
+| https://github.com/LYang910920/network-control-differential-games | Optimal-control, differential-game, impulse/hybrid-control, and network-model foundations. |
+| https://github.com/LYang910920/note1-cyber-control-games | Game learning, PMP/FBSM baselines, ODE-RL, DDQN, and CTDE/MADRL cyber-control examples. |
 
 ## License And Copyright
 

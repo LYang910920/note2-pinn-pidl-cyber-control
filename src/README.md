@@ -20,6 +20,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 
 | File | Main purpose | Useful entry points |
 |---|---|---|
+| `experiment_profiles.py` | Student-facing map from method to loss terms, edit points, and paper extensions. | `PROFILES`, `get_profile`, `describe_profiles` |
 | `inverse_pinn_sir_malware.py` | Learn hidden states and unknown `beta`, `gamma` from sparse infected observations. | `generate_data`, `StateNet`, `train` |
 | `pidl_unknown_mechanism.py` | Combine known SIR dynamics with a learned correction term. | `generate`, `CorrectionNet`, `train` |
 | `control_pinn_malware.py` | Train state and control networks by direct optimal-control loss minimization. | `StateNet`, `ControlNet`, `rhs`, `train` |
@@ -29,6 +30,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 
 | Component | Needs | Produces |
 |---|---|---|
+| Experiment profiles | method name, script, losses, first functions to edit | quick commands and paper-extension route |
 | Inverse PINN | sparse infected observations, collocation points, initial condition | state network, learned `beta`/`gamma`, loss history |
 | PIDL | sparse observations, known dynamics, correction-network architecture | state network, correction network, residual and correction diagnostics |
 | Direct control PINN | dynamics, cost weights, initial condition, collocation points | state/control networks and objective/residual history |
@@ -36,13 +38,25 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 
 ## How The Pieces Fit
 
-1. Inverse PINN asks: can sparse observations identify hidden states and parameters?
-2. PIDL asks: if part of the dynamics is known, can a network learn only the missing mechanism?
-3. Direct control PINN asks: can a neural control reduce malware while satisfying the ODE?
-4. PMP-informed PINN asks: can the network satisfy the optimality system, not only the state dynamics?
+1. `experiment_profiles.py` tells you which method, losses, and functions to modify first.
+2. Inverse PINN asks: can sparse observations identify hidden states and parameters?
+3. PIDL asks: if part of the dynamics is known, can a network learn only the missing mechanism?
+4. Direct control PINN asks: can a neural control reduce malware while satisfying the ODE?
+5. PMP-informed PINN asks: can the network satisfy the optimality system, not only the state dynamics?
+
+## First Extension Step
+
+Run:
+
+```bash
+python src/experiment_profiles.py
+```
+
+Pick the closest profile, then change one part at a time: state variables, known dynamics, observations, loss terms, control bounds, Hamiltonian, or architecture.
 
 ## Teaching-Code Boundaries
 
 These are compact examples for learning and adaptation.  For research-grade studies, add multiple seeds, held-out trajectories, uncertainty estimates, and identifiability checks.
 
 For network-scale extensions, read `docs/EXTENDING.md` before changing code.
+For visible parameter and neural-training settings, read `docs/PARAMETERS.md` or run `python src/experiment_profiles.py`.

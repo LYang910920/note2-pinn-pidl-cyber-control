@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from control_pinn_malware import ControlNet, StateNet, rhs
+from experiment_profiles import describe_profiles, get_profile
 from inverse_pinn_sir_malware import generate_data
 from pidl_unknown_mechanism import generate
 from pmp_informed_pinn_malware import hamiltonian
@@ -53,6 +54,15 @@ class PinnComponentTests(unittest.TestCase):
 
         self.assertIsNotNone(u.grad)
         self.assertTrue(torch.isfinite(u.grad).all())
+
+    def test_experiment_profiles_are_readable_extension_entries(self):
+        profile = get_profile("pmp-informed-pinn")
+        rows = describe_profiles()
+
+        self.assertIn("hamiltonian", profile.first_functions_to_edit)
+        self.assertIn("stationarity_loss", profile.key_losses)
+        self.assertIn(("learning rate", "1e-3"), profile.hyperparameters)
+        self.assertTrue(any(row["name"] == "direct-control-pinn" for row in rows))
 
 
 if __name__ == "__main__":
