@@ -13,6 +13,17 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | Run node-SIPRS inverse PINN smoke | `python src/node_siprs_inverse_pinn.py --smoke --device cpu` |
 | Run heavier GPU-oriented diagnostics | `python scripts/run_training_iterations.py --profile gpu` |
 
+## Terms Used In This Repo
+
+| Term | Meaning in Note 2 |
+|---|---|
+| `trajectory` | A time-indexed state path such as `[S(t),I(t),R(t)]` or node-level `[S_i(t),I_i(t),P_i(t),R_i(t)]`. PINN/PIDL state networks approximate trajectories. |
+| `rollout` | A forward simulation through the original ODE or graph simulator using a fixed parameter set or control policy. It is used for validation because it evaluates behavior outside the training loss. |
+| `wrong-parameter rollout` | A deliberately misspecified baseline: it uses the correct SIR model form but inaccurate beta/gamma values, then rolls the ODE forward to show what happens without inverse parameter learning. |
+| `baseline` | A simple method evaluated on the same topic and metric, such as sparse interpolation, known-SIR-only dynamics, no control, fixed control, or a rollout-optimized control. |
+| `rollout objective` | The malware-control objective computed after simulating the controlled ODE forward: infected burden plus control cost and terminal infection penalty. Lower is better within the same control topic. |
+| `robustness` | Sensitivity to noise, missing states, sparse observations, parameter mismatch, or held-out trajectories. It is reported through held-out error, multiple seeds, and baseline comparisons, not by training loss alone. |
+
 ## Shared Model Parameters
 
 Most examples use SIR-style malware dynamics with:
@@ -38,6 +49,8 @@ These are the values used by `python scripts/run_training_iterations.py`.
 
 ## Node-SIPRS Inverse PINN Parameters
 
+This smoke route is a graph/node bridge. It uses the Foundation SIPRS simulator to generate truth, observes only infected probabilities on a subset of nodes and times, and evaluates hidden-state recovery on held-out time points.
+
 | Parameter | Default |
 |---|---:|
 | graph nodes | `8` |
@@ -48,6 +61,7 @@ These are the values used by `python scripts/run_training_iterations.py`.
 | sparse observations | `4` observed nodes, `14` observed time points, infected compartment only |
 | training defaults | `iters=500`, `width=32`, `depth=2`, `collocation=32`, `lr=1e-3` |
 | smoke profile | `nodes=6`, `grid=25`, `observed_nodes=3`, `observed_times=8`, `collocation=12`, `iters=12` |
+| main validation metric | `heldout_state_mse` on unobserved time points plus `beta_abs_error`, `gamma_abs_error`, and `mass_error` |
 
 ## GPU-Oriented Diagnostic Profile
 

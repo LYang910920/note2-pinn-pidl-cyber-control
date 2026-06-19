@@ -26,6 +26,8 @@ The PMP-informed total loss can decrease more slowly because the costate boundar
 
 The second figure asks a different question: after training, how do the learned methods compare with simple alternatives?
 
+Here **rollout** means the original ODE simulator is run forward under a parameter set or control policy.  A wrong-parameter SIR rollout uses the correct SIR equation form but intentionally inaccurate beta/gamma values.  The rollout objective is a validation metric: infected burden plus control cost and terminal infection penalty.
+
 | Topic | Best method in this run | Metric | Value |
 |---|---|---|---:|
 | Sparse-data inverse PINN | Inverse PINN (data + ODE residual) | full_state_mse | 1.713e-03 |

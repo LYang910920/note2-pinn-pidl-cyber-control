@@ -26,7 +26,7 @@ Companion Note 2
 
 1. Open `docs/note2_pinn_pidl_cyber_control.pdf` for the tutorial narrative.
 2. Run `python src/experiment_profiles.py` to see the student-facing method profiles.
-3. Open `docs/PARAMETERS.md` before changing PINN/PIDL hyperparameters.
+3. Open `docs/PARAMETERS.md` before changing PINN/PIDL hyperparameters. It also defines trajectory, rollout, baseline, wrong-parameter rollout, and robustness.
 4. Run `python src/node_siprs_inverse_pinn.py --smoke --device cpu` for the canonical node-SIPRS graph inverse-learning bridge.
 5. For a heavier local/GPU diagnostic, run `python scripts/run_training_iterations.py --profile gpu` after the smoke tests pass.
 6. Read `docs/PAPER_WORKFLOW.md` when turning an example into a paper section.

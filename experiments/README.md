@@ -35,6 +35,18 @@ The baseline comparison answers a separate question from convergence: after a mo
 
 The direct-control and PMP-informed PINN histories are still useful training diagnostics. The rollout comparison deliberately evaluates each control in the original ODE simulator, so it shows whether a learned policy remains strong outside the loss used for training.
 
+## Key Terms In The Result Files
+
+| Term or column | How to read it |
+|---|---|
+| `trajectory` | A full time path of the system state. Inverse PINN/PIDL examples learn hidden parts of this path from sparse data plus equation residuals. |
+| `rollout` | A forward simulation through the original model. In baseline comparisons, rollout metrics are validation metrics, not optimizer losses. |
+| `wrong-parameter SIR rollout` | A baseline that knows the SIR equation form but uses inaccurate beta/gamma values. It shows why parameter recovery matters. |
+| `baseline_comparison_metrics.csv` | A cross-method table where each row is evaluated on a topic-specific metric. Compare rows within the same `topic`, not across unrelated topics. |
+| `rollout_objective` | In controlled malware mitigation, the ODE-simulated objective: infected burden plus control cost and terminal infection penalty. Lower is better. |
+| `robustness` | Evidence that a learned model still behaves sensibly with sparse/noisy observations, held-out points, or parameter mismatch. A decreasing training loss alone is not robustness. |
+| `heldout_state_mse` | Node-SIPRS inverse PINN error on time points that were not used as observations. This is a small smoke-test validation metric. |
+
 ## How To Read The CSV Files
 
 Each row is a logged checkpoint rather than every optimizer step.  Use `OUTPUT_PREVIEW.md` for the first categorized pass, then inspect the full curve in `figures/training_iteration_diagnostics.png`.

@@ -37,7 +37,7 @@ Open `figures/baseline_comparison.png`.
 
 Best rollout-control objective in this run: **Rollout-optimized neural control** with objective **6.153e+00**.
 
-The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss.
+The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss. A wrong-parameter SIR rollout means the equation form is correct but beta/gamma are deliberately inaccurate; it is a simple baseline for inverse parameter learning.
 
 ## 4. First-Versus-Last Snapshot
 

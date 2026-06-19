@@ -92,7 +92,7 @@ The training diagnostics plot compares the longer tutorial runs for inverse PINN
 
 ![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
 
-The baseline comparison plot asks a second question: after training, how do the learned methods compare with simple alternatives?  It uses method-specific baselines: sparse interpolation and wrong-parameter SIR for inverse PINNs, known-SIR-only dynamics for PIDL, and no/fixed/learned controls for malware mitigation.
+The baseline comparison plot asks a second question: after training, how do the learned methods compare with simple alternatives?  It uses method-specific baselines: sparse interpolation and a wrong-parameter SIR rollout for inverse PINNs, known-SIR-only dynamics for PIDL, and no/fixed/learned controls for malware mitigation.  A **rollout** means the original ODE or graph simulator is run forward under a parameter set or control policy; it is a validation check, not just another training loss.
 
 ![Baseline comparison for learned methods](figures/baseline_comparison.png)
 
@@ -115,7 +115,7 @@ The baseline comparison plot asks a second question: after training, how do the 
 
 These tutorial examples are not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
 
-Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
+Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`; it also defines trajectory, rollout, wrong-parameter rollout, baseline, and robustness. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
 
 For a heavier local/GPU diagnostic after the smoke tests pass, use:
 

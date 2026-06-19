@@ -257,7 +257,11 @@ def reduction(start: float, end: float) -> float:
 
 
 def roll_wrong_parameter_sir(beta: float, gamma: float, T: float = 20.0, n_grid: int = 400) -> np.ndarray:
-    """Roll out a deliberately misspecified SIR baseline for inverse PINN comparison."""
+    """Roll out a deliberately misspecified SIR baseline.
+
+    The model form is correct, but beta/gamma are intentionally inaccurate.
+    This tests whether inverse parameter learning beats a naive model rollout.
+    """
     _, x = generate_inverse_data(beta_true=beta, gamma_true=gamma, T=T, n_grid=n_grid)
     return to_numpy(x)
 
@@ -386,7 +390,12 @@ def get_control_value(control_source, t: float) -> float:
 
 
 def rollout_control_objective(control_source, args: SimpleNamespace, n_grid: int = 400) -> dict:
-    """Evaluate a control policy by rolling the original ODE forward."""
+    """Evaluate a control policy by rolling the original ODE forward.
+
+    This is a validation metric: the trained or fixed control is inserted into
+    the original simulator, and the objective is recomputed from the resulting
+    trajectory.
+    """
     t = np.linspace(0.0, args.T, n_grid)
     dt = args.T / (n_grid - 1)
     x = np.zeros((n_grid, 3), dtype=float)
@@ -594,7 +603,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
 
     fig.suptitle("Note 2 Baseline Comparisons: learned methods against simple alternatives", fontsize=15)
     caption = (
-        "Caption: inverse PINN is compared with sparse interpolation and a wrong-parameter SIR rollout; "
+        "Caption: inverse PINN is compared with sparse interpolation and a wrong-parameter SIR rollout, meaning the SIR equation is simulated with inaccurate beta/gamma; "
         "PIDL is compared with the known SIR model without the missing term; control methods are evaluated "
         "by rolling the original controlled malware model forward under each policy. Lower bars are better."
     )
@@ -648,6 +657,8 @@ The PMP-informed total loss can decrease more slowly because the costate boundar
 ## Baseline Comparison Snapshot
 
 The second figure asks a different question: after training, how do the learned methods compare with simple alternatives?
+
+Here **rollout** means the original ODE simulator is run forward under a parameter set or control policy.  A wrong-parameter SIR rollout uses the correct SIR equation form but intentionally inaccurate beta/gamma values.  The rollout objective is a validation metric: infected burden plus control cost and terminal infection penalty.
 
 | Topic | Best method in this run | Metric | Value |
 |---|---|---|---:|
@@ -707,7 +718,7 @@ Open `figures/baseline_comparison.png`.
 
 Best rollout-control objective in this run: **{best_control["method"]}** with objective **{numeric(best_control, "objective"):.3e}**.
 
-The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss.
+The direct-control and PMP-informed PINN panels above are training diagnostics. The baseline rollout panels use the original ODE simulator, so they deliberately show whether a learned control remains strong after it is rolled forward outside the training loss. A wrong-parameter SIR rollout means the equation form is correct but beta/gamma are deliberately inaccurate; it is a simple baseline for inverse parameter learning.
 
 ## 4. First-Versus-Last Snapshot
 
