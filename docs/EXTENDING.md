@@ -27,6 +27,20 @@ That command prints the method profiles. Pick the closest one before editing cod
 
 For larger models, move from population-level SIR states to degree-level PINNs, node-level vector states, graph-neural PINNs, operator-learning models, or hybrid neural control with jump losses. Keep the first version small and testable before scaling architecture or data.
 
+Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generates synthetic truth from the canonical foundation SIPRS simulator, observes infected probabilities for selected nodes and times, enforces graph ODE residuals at collocation points, and reports held-out state MSE plus beta/gamma error. The current time-only MLP is deliberately small; for larger graphs, replace it with node features, community pooling, or a graph encoder before claiming graph generalization.
+
+## Node-SIPRS Inverse PINN Model Card
+
+| Item | Choice in the current code |
+|---|---|
+| State | node probabilities `x_i=[S_i,I_i,P_i,R_i]` |
+| Truth generator | `cybercontrol.network_models.node_siprs_rhs_numpy` plus RK4 |
+| Neural state | time-only MLP reshaped to `[time, nodes, 4]` and softmaxed by node |
+| Observations | infected probabilities on selected nodes and selected times |
+| Residual | canonical `node_siprs_rhs_torch` on the same graph and controls |
+| Metrics | data loss, residual loss, held-out state MSE, beta/gamma absolute error, mass error |
+| Scaling path | add node features/graph encoder, multiple graph seeds, noise/sparsity ablations, and held-out graph sizes |
+
 ## From Tutorial Code To Paper Models
 
 | Paper-model ingredient | First tutorial hook | What to preserve while extending |
@@ -36,7 +50,7 @@ For larger models, move from population-level SIR states to degree-level PINNs, 
 | Unknown cyber mechanisms | `pidl_unknown_mechanism.py` | known physics term plus learned correction term |
 | Multiple controls or constraints | `ControlNet`, `rhs`, `hamiltonian` | bounded control transform and explicit objective terms |
 | PMP-informed paper model | `f_state`, `hamiltonian`, costate residual block | live autograd graph for `H_x` and `H_u` |
-| Network or graph PINNs | profile `paper_extension` notes | a small synthetic case before large data or GNN architecture |
+| Network or graph PINNs | `src/node_siprs_inverse_pinn.py` | a small synthetic case before large data or GNN architecture |
 
 ## Related Learning Path
 
@@ -45,7 +59,7 @@ Use these repositories together:
 | Step | Repository | Focus |
 |---|---|---|
 | 1 | `network-control-differential-games` | PMP, FBSM, degree/node-level network control, differential games |
-| 2 | `note1-cyber-control-games` | ODE-to-RL conversion, DDQN, CTDE/MADRL |
+| 2 | `note1-cyber-control-games` | ODE-to-RL conversion, DDQN, compact CTDE, node-SIPRS MAPPO |
 | 3 | `note2-pinn-pidl-cyber-control` | PINN/PIDL inverse learning and neural optimal control |
 
 Companion repository: https://github.com/LYang910920/network-control-differential-games

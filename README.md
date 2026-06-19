@@ -13,7 +13,7 @@ The three repositories are meant to be read in order, but each remains runnable 
 | Order | Repository | Role |
 |---:|---|---|
 | 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | **Foundation.** Notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-level versus node-level FBS scalability, and reference smoke runs. |
-| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | **Companion Note 1.** PMP/FBSM baselines, sampled-data MDP conversion, DDQN defense learning, and CTDE/MADRL attacker-defender learning. |
+| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | **Companion Note 1.** PMP/FBSM baselines, sampled-data MDP conversion, DDQN defense learning, compact CTDE, and node-SIPRS MAPPO. |
 | 2 | `note2-pinn-pidl-cyber-control` | **This companion note.** PINN/PIDL, inverse learning, neural control, PMP-informed residuals, and sparse-data validation. |
 
 ## Quick Start
@@ -63,6 +63,7 @@ cyber ODE model
   -> inverse PINN / PIDL
   -> neural control PINN
   -> PMP-informed optimality residuals
+  -> small node-SIPRS graph inverse PINN bridge
 ```
 
 ![Neural architectures](figures/neural_architectures.png)
@@ -75,6 +76,7 @@ cyber ODE model
 | PIDL | Keep known cyber dynamics explicit and learn only the missing mechanism. |
 | Neural control | Train state and control networks against objectives and ODE residuals. |
 | PMP-informed PINNs | Use Hamiltonian residuals to connect neural training with optimal-control theory. |
+| Graph/node inverse learning | Use the shared SIPRS simulator to create sparse node observations and held-out graph-state metrics. |
 
 ## Representative Experiments
 
@@ -102,6 +104,7 @@ The baseline comparison plot asks a second question: after training, how do the 
 | `figures/pidl_missing_mechanism.png` | known dynamics plus learned missing mechanism |
 | `figures/training_iteration_diagnostics.png` | longer inverse PINN, PIDL, control PINN, and PMP-informed diagnostics |
 | `figures/baseline_comparison.png` | learned methods compared with method-specific baselines |
+| `experiments/node_siprs_inverse_pinn_smoke.csv` | small node-SIPRS inverse PINN smoke metrics with held-out state error |
 | `experiments/OUTPUT_PREVIEW.md` | categorized first-stop summary after longer experiment runs |
 | `experiments/baseline_comparison_metrics.csv` | exact metric values behind the baseline comparison plot |
 | `experiments/*.csv` | logged histories behind the training plot |
@@ -120,14 +123,14 @@ For a heavier local/GPU diagnostic after the smoke tests pass, use:
 python scripts/run_training_iterations.py --profile gpu
 ```
 
-The reusable numerical/model helpers are imported from the foundation package `cybercontrol`, especially the Torch SIR RHS, bounded control networks, simplex state networks, positive parameter transforms, autograd time derivatives, RK4 data generation, plotting helpers, and CSV writing.
+The reusable numerical/model helpers are imported from the foundation package `cybercontrol`, especially the Torch SIR RHS, node-level SIPRS graph equations, bounded control networks, simplex state networks, positive parameter transforms, autograd time derivatives, RK4 data generation, plotting helpers, and CSV writing.
 
 ## Related Tutorial Repositories
 
 | Repository | Use it for |
 |---|---|
 | https://github.com/LYang910920/network-control-differential-games | Start here for the foundation notation, shared package, and worked optimal-control/game examples. |
-| https://github.com/LYang910920/note1-cyber-control-games | Continue through PMP/FBSM baselines, ODE-RL, DDQN, and CTDE/MADRL before this PINN/PIDL branch. |
+| https://github.com/LYang910920/note1-cyber-control-games | Continue through PMP/FBSM baselines, ODE-RL, DDQN, compact CTDE, and node-SIPRS MAPPO before this PINN/PIDL branch. |
 
 ## License And Copyright
 

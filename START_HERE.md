@@ -10,6 +10,7 @@ Foundation repository
 Companion Note 2
   -> PINN/PIDL model families
   -> inverse learning, missing mechanisms, neural control
+  -> small node-SIPRS graph inverse PINN bridge
   -> figures and training diagnostics
 ```
 
@@ -18,7 +19,7 @@ Companion Note 2
 | Step | Repository | What to use it for |
 |---:|---|---|
 | 0 | `network-control-differential-games` | Foundation notation, shared package, continuous/impulse/hybrid worked examples, and degree-level/node-level scalability. |
-| 1 | `note1-cyber-control-games` | PMP/FBSM, sampled-data MDPs, DDQN, CTDE/MADRL, and cyber game-learning diagnostics. |
+| 1 | `note1-cyber-control-games` | PMP/FBSM, sampled-data MDPs, DDQN, compact CTDE, node-SIPRS MAPPO, and cyber game-learning diagnostics. |
 | 2 | `note2-pinn-pidl-cyber-control` | This note: PINN/PIDL, inverse learning, neural control, PMP-informed residuals, and sparse-data validation. |
 
 ## Five-Minute Path
@@ -26,12 +27,13 @@ Companion Note 2
 1. Open `docs/note2_pinn_pidl_cyber_control.pdf` for the tutorial narrative.
 2. Run `python src/experiment_profiles.py` to see the student-facing method profiles.
 3. Open `docs/PARAMETERS.md` before changing PINN/PIDL hyperparameters.
-4. For a heavier local/GPU diagnostic, run `python scripts/run_training_iterations.py --profile gpu` after the smoke tests pass.
-5. Read `docs/PAPER_WORKFLOW.md` when turning an example into a paper section.
-6. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
-7. Run `python scripts/generate_figures.py` to recreate the figures.
-8. Run `python scripts/run_training_iterations.py` for longer loss curves and baseline comparisons.
-9. Read `docs/EXTENDING.md` when you want to scale the model.
+4. Run `python src/node_siprs_inverse_pinn.py --smoke --device cpu` for the canonical node-SIPRS graph inverse-learning bridge.
+5. For a heavier local/GPU diagnostic, run `python scripts/run_training_iterations.py --profile gpu` after the smoke tests pass.
+6. Read `docs/PAPER_WORKFLOW.md` when turning an example into a paper section.
+7. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
+8. Run `python scripts/generate_figures.py` to recreate the figures.
+9. Run `python scripts/run_training_iterations.py` for longer loss curves and baseline comparisons.
+10. Read `docs/EXTENDING.md` when you want to scale the model.
 
 ## Folder Map
 
@@ -54,5 +56,6 @@ Companion Note 2
 4. `src/pidl_unknown_mechanism.py`: known mechanism plus learned correction.
 5. `src/control_pinn_malware.py`: direct state/control optimization.
 6. `src/pmp_informed_pinn_malware.py`: state, costate, control, and Hamiltonian residuals.
+7. `src/node_siprs_inverse_pinn.py`: sparse node observations, canonical SIPRS residuals, held-out graph-state metrics.
 
 For command details, use `scripts/README.md`. For module details, use `src/README.md`.

@@ -26,6 +26,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 | `pidl_unknown_mechanism.py` | Combine known SIR dynamics with a learned correction term. | `generate`, `CorrectionNet`, `train` |
 | `control_pinn_malware.py` | Train state and control networks by direct optimal-control loss minimization. | `StateNet`, `ControlNet`, `rhs`, `train` |
 | `pmp_informed_pinn_malware.py` | Train state, costate, and control networks with PMP residuals. | `hamiltonian`, `time_derivative`, `train` |
+| `node_siprs_inverse_pinn.py` | Small graph/node inverse PINN using canonical SIPRS equations. | `generate_truth`, `NodeSIPRSStateNet`, `train`, CLI `--smoke` |
 
 ## Inputs And Outputs
 
@@ -36,6 +37,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 | PIDL | sparse observations, known dynamics, correction-network architecture | state network, correction network, residual and correction diagnostics |
 | Direct control PINN | dynamics, cost weights, initial condition, collocation points | state/control networks and objective/residual history |
 | PMP-informed PINN | Hamiltonian terms, boundary conditions, collocation points | state/costate/control networks and PMP residual history |
+| Node-SIPRS inverse PINN | sparse infected observations on selected nodes/times, held-out times, canonical graph ODE | hidden node states, beta/gamma estimates, residual and held-out state metrics |
 
 ## How The Pieces Fit
 
@@ -45,6 +47,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 4. PIDL asks: if part of the dynamics is known, can a network learn only the missing mechanism?
 5. Direct control PINN asks: can a neural control reduce malware while satisfying the ODE?
 6. PMP-informed PINN asks: can the network satisfy the optimality system, not only the state dynamics?
+7. Node-SIPRS inverse PINN asks: can a small graph model recover hidden node states from sparse node/time observations?
 
 ## First Extension Step
 

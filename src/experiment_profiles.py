@@ -121,6 +121,26 @@ PROFILES: dict[str, NeuralControlProfile] = {
             ("GPU profile", "width/depth=128/4, n_collocation=400, iters=2000"),
         ),
     ),
+    "node-siprs-inverse-pinn": NeuralControlProfile(
+        name="node-siprs-inverse-pinn",
+        script="src/node_siprs_inverse_pinn.py",
+        method="node-level inverse PINN",
+        question="Can sparse node/time infected observations recover hidden graph SIPRS states and rates?",
+        state_level="node-level SIPRS compartments on a small graph",
+        key_losses=("data_loss", "initial_condition_loss", "residual_loss", "heldout_state_mse"),
+        first_functions_to_edit=("generate_truth", "toy_adjacency", "NodeSIPRSStateNet", "train"),
+        paper_extension="Add node features, graph encoders, multiple graph seeds, noise/sparsity ablations, and held-out graph sizes.",
+        quick_args=("--smoke", "--device", "cpu"),
+        hyperparameters=(
+            ("smoke command", "python src/node_siprs_inverse_pinn.py --smoke --device cpu"),
+            ("default nodes/grid", "8 nodes, 61 time points"),
+            ("observations", "4 nodes and 14 time points, infected compartment only"),
+            ("collocation", "32 points by default"),
+            ("learning rate", "1e-3"),
+            ("loss weights", "w_ic=10.0, w_residual=1.0, w_mass=1.0"),
+            ("seed", "31"),
+        ),
+    ),
 }
 
 

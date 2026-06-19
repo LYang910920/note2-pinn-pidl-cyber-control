@@ -15,6 +15,7 @@ The script performs longer, CPU-friendly PINN/PIDL tutorial runs and writes:
 | `control_pinn_training_history.csv` | Direct control PINN objective, residual loss, initial-condition loss, and mean control. |
 | `pmp_informed_pinn_training_history.csv` | PMP-informed total, state, costate, stationarity, and boundary losses. |
 | `baseline_comparison_metrics.csv` | Method-specific baseline metrics for inverse PINN, PIDL, and controlled malware mitigation. |
+| `node_siprs_inverse_pinn_smoke.csv` | Minimal node-level SIPRS inverse PINN smoke metrics with sparse node observations and held-out state error. |
 | `OUTPUT_PREVIEW.md` | Categorized first-stop summary of each experiment, diagnostic panel, and output file. |
 | `training_summary.md` | First-versus-last loss reductions and interpretation. |
 
@@ -45,3 +46,4 @@ Each row is a logged checkpoint rather than every optimizer step.  Use `OUTPUT_P
 | Did direct control reduce the objective while respecting dynamics? | `objective`, `residual_loss`, and `mean_control` |
 | Did the PMP-informed model learn optimality conditions? | `state_loss`, `costate_loss`, `stationarity_loss`, and `boundary_loss` |
 | Did a learned method beat a baseline? | `baseline_comparison_metrics.csv`, especially `primary_value`, `objective`, and `cumulative_infected` |
+| Does the node-SIPRS graph inverse smoke preserve the model contract? | `heldout_state_mse`, `beta_abs_error`, `gamma_abs_error`, `residual_loss`, and `mass_error` in `node_siprs_inverse_pinn_smoke.csv` |

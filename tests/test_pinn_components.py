@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import unittest
 
+import numpy as np
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from control_pinn_malware import ControlNet, StateNet, rhs
 from experiment_profiles import describe_profiles, get_profile
 from inverse_pinn_sir_malware import generate_data
+from node_siprs_inverse_pinn import NodeSIPRSInverseConfig, generate_truth, train as train_node_siprs
 from pidl_unknown_mechanism import generate
 from pmp_informed_pinn_malware import hamiltonian
 
@@ -31,6 +33,15 @@ class PinnComponentTests(unittest.TestCase):
         self.assertEqual(t.shape, (40, 1))
         self.assertEqual(x.shape, (40, 3))
         self.assertTrue(torch.allclose(x.sum(dim=1), torch.ones(40), atol=1e-5))
+
+    def test_node_siprs_truth_generation_shape_and_mass(self):
+        cfg = NodeSIPRSInverseConfig(nodes=6, grid=16)
+        t, x, A = generate_truth(cfg)
+
+        self.assertEqual(t.shape, (16,))
+        self.assertEqual(x.shape, (16, 6, 4))
+        self.assertEqual(A.shape, (6, 6))
+        self.assertTrue(np.allclose(x.sum(axis=-1), 1.0, atol=1e-8))
 
     def test_control_network_outputs_are_bounded(self):
         t = torch.linspace(0.0, 1.0, 8).view(-1, 1)
@@ -54,6 +65,32 @@ class PinnComponentTests(unittest.TestCase):
 
         self.assertIsNotNone(u.grad)
         self.assertTrue(torch.isfinite(u.grad).all())
+
+    def test_node_siprs_inverse_pinn_smoke_metrics(self):
+        class Args:
+            nodes = 5
+            grid = 15
+            observed_nodes = 3
+            observed_times = 6
+            collocation = 8
+            iters = 2
+            width = 8
+            depth = 2
+            noise = 0.0
+            lr = 1e-3
+            w_ic = 10.0
+            w_residual = 1.0
+            w_mass = 1.0
+            device = "cpu"
+            seed = 12
+            log_every = 1
+            return_history = True
+
+        _, history, cfg = train_node_siprs(Args())
+        self.assertEqual(cfg["nodes"], 5)
+        self.assertGreaterEqual(len(history), 1)
+        self.assertIn("heldout_state_mse", history[-1])
+        self.assertLess(history[-1]["mass_error"], 1e-6)
 
     def test_experiment_profiles_are_readable_extension_entries(self):
         profile = get_profile("pmp-informed-pinn")
