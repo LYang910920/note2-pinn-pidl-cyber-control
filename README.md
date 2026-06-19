@@ -48,7 +48,6 @@ python scripts/run_training_iterations.py
 | Tutorial narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
 | Parameter and hyperparameter reference | `docs/PARAMETERS.md` |
 | Paper-writing workflow | `docs/PAPER_WORKFLOW.md` |
-| Three-repo student onboarding deck | [`network-control-differential-games/docs/slides/three_repo_student_onboarding`](https://github.com/LYang910920/network-control-differential-games/tree/main/docs/slides/three_repo_student_onboarding) |
 | Source-code map | `src/README.md` |
 | Student extension profiles | `src/experiment_profiles.py` |
 | Script and output map | `scripts/README.md` |
