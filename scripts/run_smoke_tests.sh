@@ -4,9 +4,11 @@
 
 set -euo pipefail
 
-python src/inverse_pinn_sir_malware.py --smoke
-python src/pidl_unknown_mechanism.py --smoke
-python src/control_pinn_malware.py --smoke
-python src/pmp_informed_pinn_malware.py --smoke
-python src/experiment_profiles.py
-python -m unittest discover -s tests
+PYTHON_BIN="${PYTHON:-python}"
+
+"${PYTHON_BIN}" src/inverse_pinn_sir_malware.py --smoke
+"${PYTHON_BIN}" src/pidl_unknown_mechanism.py --smoke
+"${PYTHON_BIN}" src/control_pinn_malware.py --smoke
+"${PYTHON_BIN}" src/pmp_informed_pinn_malware.py --smoke
+"${PYTHON_BIN}" src/experiment_profiles.py
+"${PYTHON_BIN}" -m unittest discover -s tests

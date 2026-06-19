@@ -50,13 +50,6 @@ def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
     return t, x
 
 
-class StateNet(SimplexStateNet):
-    """PIDL state network on the SIR simplex."""
-
-    def __init__(self, width=64):
-        super().__init__(width=width, depth=2)
-
-
 class CorrectionNet(nn.Module):
     def __init__(self, width=64):
         super().__init__()
@@ -77,7 +70,7 @@ def train(args):
     t_all, x_all = generate()
     idx = torch.linspace(0, len(t_all)-1, args.n_data).long()
     t_data = t_all[idx].to(DEVICE); I_data = x_all[idx, 1:2].to(DEVICE)
-    state_net = StateNet(args.width).to(DEVICE)
+    state_net = SimplexStateNet(width=args.width, depth=2).to(DEVICE)
     corr_net = CorrectionNet(args.width).to(DEVICE)
     beta_raw = nn.Parameter(torch.tensor(0.0, device=DEVICE))
     gamma_raw = nn.Parameter(torch.tensor(-1.0, device=DEVICE))
