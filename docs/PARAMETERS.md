@@ -23,6 +23,12 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | `baseline` | A simple method evaluated on the same topic and metric, such as sparse interpolation, known-SIR-only dynamics, no control, fixed control, or a rollout-optimized control. |
 | `rollout objective` | The malware-control objective computed after simulating the controlled ODE forward: infected burden plus control cost and terminal infection penalty. Lower is better within the same control topic. |
 | `robustness` | Sensitivity to noise, missing states, sparse observations, parameter mismatch, or held-out trajectories. It is reported through held-out error, multiple seeds, and baseline comparisons, not by training loss alone. |
+| `PINN` | Physics-informed neural network: a neural state/control approximation trained with data loss plus differential-equation residuals. |
+| `PIDL` | Physics-informed deep learning: a broader setup that can combine known dynamics, learned correction terms, differentiable simulation, priors, and residual losses. |
+| `collocation points` | Time or state-time points where the equation residual is evaluated, even if no data are observed there. |
+| `residual` | The mismatch between the neural derivative and the model right-hand side; small residual means the learned trajectory approximately obeys the assumed dynamics. |
+| `PMP-informed` | A PINN/PIDL variant that includes Hamiltonian, costate, and stationarity residuals from Pontryagin's maximum principle. |
+| `held-out` | Data, time points, graph seeds, or trajectories not used in fitting; used to check whether the learned model generalizes beyond training observations. |
 
 ## Shared Model Parameters
 

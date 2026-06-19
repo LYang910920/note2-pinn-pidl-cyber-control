@@ -52,6 +52,16 @@ Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generate
 | PMP-informed paper model | `f_state`, `hamiltonian`, costate residual block | live autograd graph for `H_x` and `H_u` |
 | Network or graph PINNs | `src/node_siprs_inverse_pinn.py` | a small synthetic case before large data or GNN architecture |
 
+## Paper-Level Extension Contract
+
+When adapting a paper model, keep these contracts visible in code and outputs:
+
+1. A named profile in `src/experiment_profiles.py` with dynamics, data regime, loss weights, optimizer iterations, network width/depth, collocation count, and first functions to edit.
+2. A runnable smoke command that checks finite losses, mass/simplex constraints, output files, and at least one held-out metric when available.
+3. A baseline table for the same topic: interpolation or wrong-parameter rollout for inverse learning, known-physics-only for PIDL, no/fixed/FBSM controls for control studies.
+4. Separate logged losses for data, residual, boundary/initial, stationarity, regularization, and objective terms. Do not report only a total loss.
+5. A short claim statement in `docs/PAPER_WORKFLOW.md`: whether the result is parameter estimation, mechanism correction, control search, PMP consistency, or graph inverse learning, and what evidence is still needed for stronger claims.
+
 ## Related Learning Path
 
 Use these repositories together:
