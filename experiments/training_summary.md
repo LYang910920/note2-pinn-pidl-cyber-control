@@ -2,6 +2,10 @@
 
 These diagnostics use the `teaching` profile with `600` optimizer iterations per method. The default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
 
+## Training Diagnostic Terms
+
+Open `experiments/training_diagnostic_glossary.md` before reading the training plots.  In this repo, **iteration** means an optimizer step, **collocation point** means a residual-evaluation point, **residual loss** checks equation consistency, and **rollout objective** means the original ODE is simulated forward for validation.
+
 ## Profile Parameters
 
 | Method | Width/depth | Data points | Collocation points |

@@ -6,7 +6,7 @@ Scripts are grouped by purpose: quick validation, figure generation, and longer 
 |---|---|---|---|
 | `run_smoke_tests.sh` | Fast confidence check for every executable component. | `bash scripts/run_smoke_tests.sh` | Console output only |
 | `generate_figures.py` | Rebuild static explanatory figures used by the README. | `python scripts/generate_figures.py` | `figures/*.png` |
-| `run_training_iterations.py` | Run longer inverse PINN, PIDL, direct-control, PMP-informed, and baseline-comparison diagnostics. | `python scripts/run_training_iterations.py` | `experiments/*.csv`, `experiments/OUTPUT_PREVIEW.md`, `experiments/training_summary.md`, `figures/training_iteration_diagnostics.png`, `figures/baseline_comparison.png` |
+| `run_training_iterations.py` | Run longer inverse PINN, PIDL, direct-control, PMP-informed, and baseline-comparison diagnostics. | `python scripts/run_training_iterations.py` | `experiments/*.csv`, `experiments/OUTPUT_PREVIEW.md`, `experiments/training_diagnostic_glossary.md`, `experiments/training_summary.md`, `figures/training_iteration_diagnostics.png`, `figures/baseline_comparison.png` |
 
 ## Runtime Notes
 
@@ -40,6 +40,8 @@ The checked-in CSV files and figures are examples from one deterministic tutoria
 |---|---|
 | Training histories and `figures/training_iteration_diagnostics.png` | checking whether losses and residuals move toward a stable low-error regime |
 | `baseline_comparison_metrics.csv` and `figures/baseline_comparison.png` | checking whether the trained method beats a simple, topic-specific baseline |
+
+`experiments/training_diagnostic_glossary.md` defines the plotted terms. Use it when comparing total loss, data loss, ODE residual loss, stationarity loss, mean control, and rollout objective; these are related but not interchangeable.
 
 ## What Each Script Needs
 

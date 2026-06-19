@@ -53,6 +53,7 @@ The direct-control and PMP-informed PINN panels above are training diagnostics. 
 | Category | File |
 |---|---|
 | Summary | `experiments/training_summary.md` |
+| Diagnostic glossary | `experiments/training_diagnostic_glossary.md` |
 | Learning curves | `figures/training_iteration_diagnostics.png` |
 | Baseline comparison | `figures/baseline_comparison.png` |
 | Baseline metrics | `experiments/baseline_comparison_metrics.csv` |

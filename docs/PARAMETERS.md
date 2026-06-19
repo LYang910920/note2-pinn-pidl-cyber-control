@@ -29,6 +29,11 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | `residual` | The mismatch between the neural derivative and the model right-hand side; small residual means the learned trajectory approximately obeys the assumed dynamics. |
 | `PMP-informed` | A PINN/PIDL variant that includes Hamiltonian, costate, and stationarity residuals from Pontryagin's maximum principle. |
 | `held-out` | Data, time points, graph seeds, or trajectories not used in fitting; used to check whether the learned model generalizes beyond training observations. |
+| `training diagnostic` | A plotted/logged check of training behavior, such as data loss, ODE residual loss, objective, stationarity loss, or a rollout baseline metric. |
+| `data loss` | Error against observed samples. It checks fit to data but not whether the learned path obeys the model. |
+| `ODE residual loss` | Error between the neural derivative and the ODE right-hand side at collocation points. |
+| `stationarity loss` | Hamiltonian first-order residual used in the PMP-informed example. It supports PMP consistency but does not by itself prove global optimality. |
+| `correction regularizer` | PIDL penalty that keeps the learned missing-mechanism term controlled instead of letting it replace the known dynamics. |
 
 ## Shared Model Parameters
 

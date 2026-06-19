@@ -88,7 +88,7 @@ The PIDL example keeps the known SIR mechanism in the model and asks a correctio
 
 ![PIDL missing nonlinear mechanism](figures/pidl_missing_mechanism.png)
 
-The training diagnostics plot compares the longer tutorial runs for inverse PINN, PIDL, direct-control PINN, and PMP-informed PINN.  The separate loss curves make it easier to see whether the model is fitting data, respecting dynamics, and reducing the intended objective.
+The training diagnostics plot compares the longer tutorial runs for inverse PINN, PIDL, direct-control PINN, and PMP-informed PINN.  The separate loss curves make it easier to see whether the model is fitting data, respecting dynamics, reducing the intended objective, and satisfying PMP-style stationarity.  The generated `experiments/training_diagnostic_glossary.md` defines the plotted terms such as data loss, ODE residual loss, stationarity loss, collocation point, and rollout objective.
 
 ![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
 
@@ -106,6 +106,7 @@ The baseline comparison plot asks a second question: after training, how do the 
 | `figures/baseline_comparison.png` | learned methods compared with method-specific baselines |
 | `experiments/node_siprs_inverse_pinn_smoke.csv` | small node-SIPRS inverse PINN smoke metrics with held-out state error |
 | `experiments/OUTPUT_PREVIEW.md` | categorized first-stop summary after longer experiment runs |
+| `experiments/training_diagnostic_glossary.md` | short definitions for loss, residual, rollout, and validation terms |
 | `experiments/baseline_comparison_metrics.csv` | exact metric values behind the baseline comparison plot |
 | `experiments/*.csv` | logged histories behind the training plot |
 

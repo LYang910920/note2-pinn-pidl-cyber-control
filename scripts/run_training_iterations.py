@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from shared_setup import ensure_foundation_package
 
 ensure_foundation_package()
+from cybercontrol.diagnostics import add_caption, diagnostic_terms_for, write_diagnostic_glossary
 from cybercontrol.io import write_csv
 from cybercontrol.torch_utils import rk4_step_torch
 from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
@@ -56,6 +57,27 @@ BASELINE_FIELDS = [
     "mean_control",
     "notes",
 ]
+NOTE2_DIAGNOSTIC_TERMS = diagnostic_terms_for(
+    [
+        "iteration",
+        "rollout",
+        "loss",
+        "data loss",
+        "ODE residual loss",
+        "residual loss",
+        "initial-condition loss",
+        "boundary loss",
+        "costate loss",
+        "stationarity loss",
+        "objective",
+        "rollout objective",
+        "correction regularizer",
+        "mean control",
+        "collocation point",
+        "held-out metric",
+        "baseline comparison",
+    ]
+)
 
 TRAINING_PROFILES = {
     "teaching": {
@@ -206,34 +228,34 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     axes = axes.ravel()
 
-    axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["loss"] for r in histories["inverse"]], label="total")
-    axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["ode_loss"] for r in histories["inverse"]], label="ODE")
-    axes[0].set_title("Sparse-data inverse PINN: total vs ODE residual loss")
+    axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["loss"] for r in histories["inverse"]], label="total loss")
+    axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["ode_loss"] for r in histories["inverse"]], label="ODE residual loss")
+    axes[0].set_title("Sparse-data inverse PINN: data fit plus ODE consistency")
     axes[0].set_ylabel("Loss (log scale)")
 
     pidl_it = [r["iteration"] for r in histories["pidl"]]
-    axes[1].semilogy(pidl_it, [r["loss"] for r in histories["pidl"]], label="total")
-    axes[1].semilogy(pidl_it, [r["residual_loss"] for r in histories["pidl"]], label="residual")
+    axes[1].semilogy(pidl_it, [r["loss"] for r in histories["pidl"]], label="total loss")
+    axes[1].semilogy(pidl_it, [r["residual_loss"] for r in histories["pidl"]], label="known-model residual loss")
     axes[1].set_title("PIDL missing mechanism: residual loss and correction size")
     axes[1].set_ylabel("Loss (log scale)")
     ax_pidl = axes[1].twinx()
-    ax_pidl.plot(pidl_it, [r["mean_correction"] for r in histories["pidl"]], color="#e45756", label="mean correction")
+    ax_pidl.plot(pidl_it, [r["mean_correction"] for r in histories["pidl"]], color="#e45756", label="mean learned correction")
     ax_pidl.set_ylabel("Mean learned correction")
 
     control_it = [r["iteration"] for r in histories["control"]]
-    axes[2].semilogy(control_it, [r["loss"] for r in histories["control"]], label="total")
-    axes[2].semilogy(control_it, [r["objective"] for r in histories["control"]], label="objective")
-    axes[2].semilogy(control_it, [r["residual_loss"] for r in histories["control"]], label="state residual")
-    axes[2].set_title("Direct control PINN: objective and dynamics residual")
+    axes[2].semilogy(control_it, [r["loss"] for r in histories["control"]], label="total loss")
+    axes[2].semilogy(control_it, [r["objective"] for r in histories["control"]], label="control objective")
+    axes[2].semilogy(control_it, [r["residual_loss"] for r in histories["control"]], label="state ODE residual loss")
+    axes[2].set_title("Direct control PINN: control objective and dynamics residual")
     axes[2].set_ylabel("Loss / objective (log scale)")
     ax_control = axes[2].twinx()
-    ax_control.plot(control_it, [r["mean_control"] for r in histories["control"]], color="#e45756", label="mean control")
+    ax_control.plot(control_it, [r["mean_control"] for r in histories["control"]], color="#e45756", label="mean control intensity")
     ax_control.set_ylabel("Mean control intensity")
 
-    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["loss"] for r in histories["pmp"]], label="total")
-    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["state_loss"] for r in histories["pmp"]], label="state")
-    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["costate_loss"] for r in histories["pmp"]], label="costate")
-    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["stationarity_loss"] for r in histories["pmp"]], label="stationarity")
+    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["loss"] for r in histories["pmp"]], label="total loss")
+    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["state_loss"] for r in histories["pmp"]], label="state residual loss")
+    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["costate_loss"] for r in histories["pmp"]], label="costate residual loss")
+    axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["stationarity_loss"] for r in histories["pmp"]], label="stationarity loss")
     axes[3].set_title("PMP-informed PINN: optimality residuals")
     axes[3].set_ylabel("Residual loss (log scale)")
 
@@ -246,7 +268,11 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     ax_pidl.legend(loc="upper right", fontsize=8)
     ax_control.legend(loc="upper right", fontsize=8)
 
-    fig.tight_layout()
+    add_caption(
+        fig,
+        "Training diagnostics: each panel reports optimizer iterations, not physical time. Loss components are shown separately so data fit, ODE consistency, objective reduction, and PMP stationarity can be checked without hiding behind one total loss.",
+    )
+    fig.tight_layout(rect=(0, 0.065, 1, 1))
     output_path.parent.mkdir(exist_ok=True)
     fig.savefig(output_path, dpi=180)
     plt.close(fig)
@@ -607,7 +633,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         "PIDL is compared with the known SIR model without the missing term; control methods are evaluated "
         "by rolling the original controlled malware model forward under each policy. Lower bars are better."
     )
-    fig.text(0.5, 0.01, textwrap.fill(caption, 150), ha="center", va="bottom", fontsize=9)
+    add_caption(fig, caption, width=150, y=0.01)
     fig.tight_layout(rect=(0, 0.06, 1, 0.95))
     output_path.parent.mkdir(exist_ok=True)
     fig.savefig(output_path, dpi=190)
@@ -633,6 +659,10 @@ def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: l
     text = f"""# Training Summary
 
 These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` optimizer iterations per method. The default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+
+## Training Diagnostic Terms
+
+Open `experiments/training_diagnostic_glossary.md` before reading the training plots.  In this repo, **iteration** means an optimizer step, **collocation point** means a residual-evaluation point, **residual loss** checks equation consistency, and **rollout objective** means the original ODE is simulated forward for validation.
 
 ## Profile Parameters
 
@@ -734,6 +764,7 @@ The direct-control and PMP-informed PINN panels above are training diagnostics. 
 | Category | File |
 |---|---|
 | Summary | `experiments/training_summary.md` |
+| Diagnostic glossary | `experiments/training_diagnostic_glossary.md` |
 | Learning curves | `figures/training_iteration_diagnostics.png` |
 | Baseline comparison | `figures/baseline_comparison.png` |
 | Baseline metrics | `experiments/baseline_comparison_metrics.csv` |
@@ -782,6 +813,11 @@ def main() -> None:
     write_csv(exp_dir / "control_pinn_training_history.csv", control_history)
     write_csv(exp_dir / "pmp_informed_pinn_training_history.csv", pmp_history)
     write_csv(exp_dir / "baseline_comparison_metrics.csv", baseline_rows)
+    write_diagnostic_glossary(
+        exp_dir / "training_diagnostic_glossary.md",
+        NOTE2_DIAGNOSTIC_TERMS,
+        title="Note 2 Training Diagnostic Glossary",
+    )
     write_output_preview(exp_dir / "OUTPUT_PREVIEW.md", histories, baseline_rows, profile)
     write_summary(exp_dir / "training_summary.md", histories, baseline_rows, profile)
     plot_training_diagnostics(fig_dir / "training_iteration_diagnostics.png", histories)

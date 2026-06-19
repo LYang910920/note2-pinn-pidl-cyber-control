@@ -38,6 +38,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 | Direct control PINN | dynamics, cost weights, initial condition, collocation points | state/control networks and objective/residual history |
 | PMP-informed PINN | Hamiltonian terms, boundary conditions, collocation points | state/costate/control networks and PMP residual history |
 | Node-SIPRS inverse PINN | sparse infected observations on selected nodes/times, held-out times, canonical graph ODE | hidden node states, beta/gamma estimates, residual and held-out state metrics |
+| Training diagnostics | histories from inverse PINN, PIDL, direct control, PMP-informed PINN, and rollout baselines | standardized glossary, readable captions, and same-topic comparison figures |
 
 ## How The Pieces Fit
 
