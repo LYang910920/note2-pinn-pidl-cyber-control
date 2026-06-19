@@ -22,6 +22,8 @@ Companion Note 2
 | 1 | `note1-cyber-control-games` | PMP/FBSM, sampled-data MDPs, DDQN, compact CTDE, node-SIPRS MAPPO, and cyber game-learning diagnostics. |
 | 2 | `note2-pinn-pidl-cyber-control` | This note: PINN/PIDL, inverse learning, neural control, PMP-informed residuals, and sparse-data validation. |
 
+For a slide-based overview of the full three-repository path, open the student onboarding deck in the foundation repository: <https://github.com/LYang910920/network-control-differential-games/tree/main/docs/slides/three_repo_student_onboarding>.
+
 ## Five-Minute Path
 
 1. Open `docs/note2_pinn_pidl_cyber_control.pdf` for the tutorial narrative.
