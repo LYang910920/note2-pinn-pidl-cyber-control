@@ -7,7 +7,7 @@ These diagnostics use longer laptop-friendly runs than the smoke tests.  They ar
 | Inverse PINN total loss | 1.286e+00 | 1.255e-03 | 9.756e-04 |
 | PIDL total loss | 2.543e+00 | 3.564e-03 | 1.401e-03 |
 | Direct control PINN total loss | 9.360e+01 | 2.636e-01 | 2.816e-03 |
-| PMP-informed stationarity loss | 2.187e-01 | 3.364e-03 | 1.539e-02 |
+| PMP-informed stationarity loss | 2.971e-01 | 5.581e-03 | 1.879e-02 |
 
 The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
 

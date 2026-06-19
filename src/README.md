@@ -20,6 +20,7 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 
 | File | Main purpose | Useful entry points |
 |---|---|---|
+| `shared_setup.py` | Finds the shared foundation package during local workspace runs. | `ensure_foundation_package` |
 | `experiment_profiles.py` | Student-facing map from method to loss terms, edit points, and paper extensions. | `PROFILES`, `get_profile`, `describe_profiles` |
 | `inverse_pinn_sir_malware.py` | Learn hidden states and unknown `beta`, `gamma` from sparse infected observations. | `generate_data`, `StateNet`, `train` |
 | `pidl_unknown_mechanism.py` | Combine known SIR dynamics with a learned correction term. | `generate`, `CorrectionNet`, `train` |
@@ -38,11 +39,12 @@ State networks use `softmax` so `S + I + R = 1` by construction.  Control networ
 
 ## How The Pieces Fit
 
-1. `experiment_profiles.py` tells you which method, losses, and functions to modify first.
-2. Inverse PINN asks: can sparse observations identify hidden states and parameters?
-3. PIDL asks: if part of the dynamics is known, can a network learn only the missing mechanism?
-4. Direct control PINN asks: can a neural control reduce malware while satisfying the ODE?
-5. PMP-informed PINN asks: can the network satisfy the optimality system, not only the state dynamics?
+1. `shared_setup.py` connects this repo to the shared `cybercontrol` package.
+2. `experiment_profiles.py` tells you which method, losses, and functions to modify first.
+3. Inverse PINN asks: can sparse observations identify hidden states and parameters?
+4. PIDL asks: if part of the dynamics is known, can a network learn only the missing mechanism?
+5. Direct control PINN asks: can a neural control reduce malware while satisfying the ODE?
+6. PMP-informed PINN asks: can the network satisfy the optimality system, not only the state dynamics?
 
 ## First Extension Step
 

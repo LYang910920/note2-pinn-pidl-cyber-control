@@ -12,9 +12,16 @@ If this is your first visit, start with `START_HERE.md`.
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
+pip install -e ../network-control-differential-games
 pip install -r requirements.txt
 bash scripts/run_smoke_tests.sh
 python scripts/generate_figures.py
+```
+
+If this repository is cloned by itself, install the shared foundation package from GitHub before running the examples:
+
+```bash
+pip install "git+https://github.com/LYang910920/network-control-differential-games.git"
 ```
 
 For longer diagnostics and baseline comparisons:
@@ -30,6 +37,7 @@ python scripts/run_training_iterations.py
 | Short orientation | `START_HERE.md` |
 | Tutorial narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
 | Parameter and hyperparameter reference | `docs/PARAMETERS.md` |
+| Paper-writing workflow | `docs/PAPER_WORKFLOW.md` |
 | Source-code map | `src/README.md` |
 | Student extension profiles | `src/experiment_profiles.py` |
 | Script and output map | `scripts/README.md` |
@@ -94,7 +102,9 @@ The baseline comparison plot asks a second question: after training, how do the 
 
 These examples are teaching code, not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
 
-Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios.
+Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
+
+The reusable numerical/model helpers are imported from the foundation package `cybercontrol`, especially the Torch SIR RHS, bounded control networks, simplex state networks, positive parameter transforms, autograd time derivatives, RK4 data generation, plotting helpers, and CSV writing.
 
 ## Related Tutorial Repositories
 

@@ -16,10 +16,11 @@ tutorial note
 1. Open `docs/note2_pinn_pidl_cyber_control.pdf` for the tutorial narrative.
 2. Run `python src/experiment_profiles.py` to see the student-facing method profiles.
 3. Open `docs/PARAMETERS.md` before changing PINN/PIDL hyperparameters.
-4. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
-5. Run `python scripts/generate_figures.py` to recreate the figures.
-6. Run `python scripts/run_training_iterations.py` for longer loss curves and baseline comparisons.
-7. Read `docs/EXTENDING.md` when you want to scale the model.
+4. Read `docs/PAPER_WORKFLOW.md` when turning an example into a paper section.
+5. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
+6. Run `python scripts/generate_figures.py` to recreate the figures.
+7. Run `python scripts/run_training_iterations.py` for longer loss curves and baseline comparisons.
+8. Read `docs/EXTENDING.md` when you want to scale the model.
 
 ## Folder Map
 
@@ -27,6 +28,7 @@ tutorial note
 |---|---|
 | `docs/` | tutorial note, implementation notes, extension guide |
 | `docs/PARAMETERS.md` | model parameters, loss weights, collocation settings, and neural hyperparameters |
+| `docs/PAPER_WORKFLOW.md` | paper workflow for inverse PINN, PIDL, neural control, and PMP-informed PINN |
 | `src/` | executable PINN/PIDL examples |
 | `scripts/` | commands for figures, smoke tests, and diagnostics |
 | `experiments/` | CSV histories, baseline metrics, output preview, and training summary |
@@ -35,10 +37,11 @@ tutorial note
 
 ## Code Reading Order
 
-1. `src/experiment_profiles.py`: named method profiles and first functions to edit.
-2. `src/inverse_pinn_sir_malware.py`: sparse observations, ODE residuals, inverse parameters.
-3. `src/pidl_unknown_mechanism.py`: known mechanism plus learned correction.
-4. `src/control_pinn_malware.py`: direct state/control optimization.
-5. `src/pmp_informed_pinn_malware.py`: state, costate, control, and Hamiltonian residuals.
+1. `src/shared_setup.py`: local helper that finds the shared foundation package in a sibling workspace.
+2. `src/experiment_profiles.py`: named method profiles and first functions to edit.
+3. `src/inverse_pinn_sir_malware.py`: sparse observations, ODE residuals, inverse parameters.
+4. `src/pidl_unknown_mechanism.py`: known mechanism plus learned correction.
+5. `src/control_pinn_malware.py`: direct state/control optimization.
+6. `src/pmp_informed_pinn_malware.py`: state, costate, control, and Hamiltonian residuals.
 
 For command details, use `scripts/README.md`. For module details, use `src/README.md`.

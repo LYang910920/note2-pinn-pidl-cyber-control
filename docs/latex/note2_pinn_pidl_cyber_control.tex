@@ -406,7 +406,7 @@ with cost functional
 \end{equation}
 For malware defense, a typical cost is
 \begin{equation}
-    J(u)=\int_0^T \left[w_I I(t)+c_u u^2(t)\right]\dd t+w_T I(T).
+    J(u)=\int_0^T \left[A I(t)+\frac{1}{2}B u^2(t)\right]\dd t+A_T I(T).
 \end{equation}
 The defender wants low infection, but strong control is costly.
 
@@ -423,7 +423,7 @@ The sigmoid ensures $\hat{u}(t)\in[0,u_{\max}]$. The loss is
 \end{equation}
 where
 \begin{equation}
-    \widehat{J}=\frac{T}{N_f}\sum_{j=1}^{N_f}\left[w_I\hat{I}(t_j)+c_u\hat{u}^2(t_j)\right]+w_T\hat{I}(T).
+    \widehat{J}=\frac{T}{N_f}\sum_{j=1}^{N_f}\left[A\hat{I}(t_j)+\frac{1}{2}B\hat{u}^2(t_j)\right]+A_T\hat{I}(T).
 \end{equation}
 The ODE residual enforces system dynamics under $\hat{u}(t)$.
 
@@ -468,20 +468,20 @@ For
 \end{align}
 with
 \begin{equation}
-    L=w_I I+c_u u^2,
+    L=A I+\frac{1}{2}B u^2,
 \end{equation}
 let $\lambda=[\lambda_S,\lambda_I,\lambda_R]^\top$. The Hamiltonian is
 \begin{align}
-H &= w_I I+c_u u^2 + \lambda_S(-\beta SI-uS) \\
+H &= A I+\frac{1}{2}B u^2 + \lambda_S(-\beta SI-uS) \\
 &\quad + \lambda_I(\beta SI-\gamma I)+\lambda_R(\gamma I+uS).
 \end{align}
 The stationarity condition is
 \begin{equation}
-    \frac{\partial H}{\partial u}=2c_u u -\lambda_S S+\lambda_R S=0.
+    \frac{\partial H}{\partial u}=B u -\lambda_S S+\lambda_R S=0.
 \end{equation}
 Thus the unconstrained control is
 \begin{equation}
-    u^{raw}(t)=\frac{S(t)(\lambda_S(t)-\lambda_R(t))}{2c_u}.
+    u^{raw}(t)=\frac{S(t)(\lambda_S(t)-\lambda_R(t))}{B}.
 \end{equation}
 If $u(t)\in[0,u_{\max}]$, the projected control is
 \begin{equation}

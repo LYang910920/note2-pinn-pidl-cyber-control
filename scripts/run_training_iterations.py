@@ -11,7 +11,6 @@ trained methods beat simple, topic-specific baselines?
 from __future__ import annotations
 
 import argparse
-import csv
 from pathlib import Path
 import sys
 import textwrap
@@ -26,11 +25,15 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from shared_setup import ensure_foundation_package
+
+ensure_foundation_package()
+from cybercontrol.io import write_csv
+from cybercontrol.torch_utils import rk4_step_torch
 from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
 from inverse_pinn_sir_malware import generate_data as generate_inverse_data, train as train_inverse_pinn
 from pidl_unknown_mechanism import generate as generate_pidl_data
 from pidl_unknown_mechanism import known_rhs as pidl_known_rhs
-from pidl_unknown_mechanism import rk4_step as pidl_rk4_step
 from pidl_unknown_mechanism import train as train_pidl
 from pmp_informed_pinn_malware import train as train_pmp_pinn
 
@@ -53,16 +56,6 @@ BASELINE_FIELDS = [
     "mean_control",
     "notes",
 ]
-
-
-def write_csv(path: Path, rows: list[dict]) -> None:
-    path.parent.mkdir(exist_ok=True)
-    if not rows:
-        return
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def baseline_row(**kwargs) -> dict:
@@ -292,7 +285,7 @@ def roll_known_pidl_baseline(T: float = 20.0, n_grid: int = 400, beta: float = 0
     gamma_t = torch.tensor(gamma)
     for k in range(n_grid - 1):
         rhs = lambda y: pidl_known_rhs(y, beta_t, gamma_t)
-        x[k + 1] = pidl_rk4_step(x[k], dt, rhs)
+        x[k + 1] = rk4_step_torch(x[k], dt, rhs, project_simplex=True)
     return to_numpy(x)
 
 

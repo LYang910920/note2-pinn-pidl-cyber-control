@@ -44,7 +44,7 @@ The direct-control and PMP-informed PINN panels above are training diagnostics. 
 | Inverse PINN total loss | 1.286e+00 | 1.255e-03 | 9.756e-04 |
 | PIDL total loss | 2.543e+00 | 3.564e-03 | 1.401e-03 |
 | Direct control PINN total loss | 9.360e+01 | 2.636e-01 | 2.816e-03 |
-| PMP-informed stationarity loss | 2.187e-01 | 3.364e-03 | 1.539e-02 |
+| PMP-informed stationarity loss | 2.971e-01 | 5.581e-03 | 1.879e-02 |
 
 ## 5. Files To Open First
 

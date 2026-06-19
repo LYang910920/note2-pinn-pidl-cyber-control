@@ -24,29 +24,19 @@ import argparse
 import torch
 torch.set_num_threads(1)
 import torch.nn as nn
+from shared_setup import ensure_foundation_package
+
+ensure_foundation_package()
+from cybercontrol.models import sir_rhs_torch as known_rhs
+from cybercontrol.torch_utils import MLP, SimplexStateNet, positive, rk4_step_torch
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def known_rhs(x, beta, gamma):
-    S, I, R = x[..., 0], x[..., 1], x[..., 2]
-    return torch.stack([-beta*S*I, beta*S*I - gamma*I, gamma*I], dim=-1)
 
 
 def true_rhs(x, beta, gamma, q):
     S, I, R = x[..., 0], x[..., 1], x[..., 2]
     corr = q*S*I*I
     return known_rhs(x, beta, gamma) + torch.stack([-corr, corr, torch.zeros_like(corr)], dim=-1)
-
-
-def rk4_step(x, dt, rhs):
-    k1 = rhs(x)
-    k2 = rhs(x + 0.5*dt*k1)
-    k3 = rhs(x + 0.5*dt*k2)
-    k4 = rhs(x + dt*k3)
-    y = x + dt*(k1+2*k2+2*k3+k4)/6.0
-    y = torch.clamp(y, 0.0, 1.0)
-    return y / y.sum(dim=-1, keepdim=True)
 
 
 def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
@@ -56,43 +46,25 @@ def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
     x = torch.zeros(n, 3); x[0] = torch.tensor([0.95, 0.05, 0.0])
     for k in range(n-1):
         rhs = lambda y: true_rhs(y, torch.tensor(beta), torch.tensor(gamma), torch.tensor(q))
-        x[k+1] = rk4_step(x[k], dt, rhs)
+        x[k+1] = rk4_step_torch(x[k], dt, rhs, project_simplex=True)
     return t, x
 
 
-class StateNet(nn.Module):
-    def __init__(self, width=64):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(1, width),
-            nn.Tanh(),
-            nn.Linear(width, width),
-            nn.Tanh(),
-            nn.Linear(width, 3),
-        )
+class StateNet(SimplexStateNet):
+    """PIDL state network on the SIR simplex."""
 
-    def forward(self, t):
-        return torch.softmax(self.net(t), dim=-1)
+    def __init__(self, width=64):
+        super().__init__(width=width, depth=2)
 
 
 class CorrectionNet(nn.Module):
     def __init__(self, width=64):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(3, width),
-            nn.Tanh(),
-            nn.Linear(width, width),
-            nn.Tanh(),
-            nn.Linear(width, 1),
-        )
+        self.net = MLP(3, 1, width=width, depth=2)
 
     def forward(self, x):
         # softplus makes the correction nonnegative.  Remove it if sign is unknown.
         return torch.nn.functional.softplus(self.net(x))
-
-
-def positive(raw):
-    return torch.nn.functional.softplus(raw) + 1e-6
 
 
 def train(args):
