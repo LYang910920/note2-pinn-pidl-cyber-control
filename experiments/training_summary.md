@@ -1,6 +1,6 @@
 # Training Summary
 
-These diagnostics use the `teaching` profile with `600` optimizer iterations per method. The teaching profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+These diagnostics use the `teaching` profile with `600` optimizer iterations per method. This default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
 
 ## Profile Parameters
 
@@ -20,7 +20,7 @@ These diagnostics use the `teaching` profile with `600` optimizer iterations per
 | Direct control PINN total loss | 9.360e+01 | 2.636e-01 | 2.816e-03 |
 | PMP-informed stationarity loss | 2.971e-01 | 5.581e-03 | 1.879e-02 |
 
-The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
+The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this tutorial run, the stationarity residual is the most important quick sanity signal.
 
 ## Baseline Comparison Snapshot
 

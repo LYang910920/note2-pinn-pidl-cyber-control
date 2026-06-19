@@ -1,6 +1,6 @@
 # PINN and PIDL Cyber Control, Note 2
 
-Executable companion for **Note 2: PINN/PIDL for Cyber Control**.  The repo keeps four teaching examples in one place: inverse PINNs, PIDL with a missing mechanism, direct neural optimal control, and PMP-informed PINNs.
+Executable companion for **Note 2: PINN/PIDL for Cyber Control**.  The repo keeps four tutorial examples in one place: inverse PINNs, PIDL with a missing mechanism, direct neural optimal control, and PMP-informed PINNs.
 
 The main goal is to make the loss design visible: data terms, ODE residuals, boundary conditions, control objectives, and PMP optimality residuals are logged separately.  The examples are compact, but each one produces figures and CSV histories so the training behavior can be inspected rather than guessed.
 
@@ -76,7 +76,7 @@ The PIDL example keeps the known SIR mechanism in the model and asks a correctio
 
 ![PIDL missing nonlinear mechanism](figures/pidl_missing_mechanism.png)
 
-The training diagnostics plot compares the longer teaching runs for inverse PINN, PIDL, direct-control PINN, and PMP-informed PINN.  The separate loss curves make it easier to see whether the model is fitting data, respecting dynamics, and reducing the intended objective.
+The training diagnostics plot compares the longer tutorial runs for inverse PINN, PIDL, direct-control PINN, and PMP-informed PINN.  The separate loss curves make it easier to see whether the model is fitting data, respecting dynamics, and reducing the intended objective.
 
 ![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
 
@@ -100,7 +100,7 @@ The baseline comparison plot asks a second question: after training, how do the 
 
 `bash scripts/run_smoke_tests.sh` runs the fast local check.  GitHub Actions repeats the smoke tests and regenerates figures on each push or pull request.
 
-These examples are teaching code, not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
+These tutorial examples are not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
 
 Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
 

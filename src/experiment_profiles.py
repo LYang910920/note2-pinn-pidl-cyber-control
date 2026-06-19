@@ -3,7 +3,7 @@
 
 """Named experiment profiles for adapting Note 2 code.
 
-The four teaching scripts are intentionally small, but students still need a
+The four tutorial scripts are small, but students still need a
 clear map from method to model ingredients.  This module provides that map in
 code form so it can be printed, tested, copied, or imported by longer paper
 experiments.

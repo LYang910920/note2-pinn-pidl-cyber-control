@@ -111,7 +111,7 @@ def mse(a, b) -> float:
 
 
 def inverse_args(profile: dict) -> SimpleNamespace:
-    """Configuration for the sparse-data inverse PINN teaching run."""
+    """Configuration for the sparse-data inverse PINN tutorial run."""
     cfg = profile["inverse"]
     return SimpleNamespace(
         smoke=False,
@@ -131,7 +131,7 @@ def inverse_args(profile: dict) -> SimpleNamespace:
 
 
 def pidl_args(profile: dict) -> SimpleNamespace:
-    """Configuration for the PIDL missing-mechanism teaching run."""
+    """Configuration for the PIDL missing-mechanism tutorial run."""
     cfg = profile["pidl"]
     return SimpleNamespace(
         smoke=False,
@@ -151,7 +151,7 @@ def pidl_args(profile: dict) -> SimpleNamespace:
 
 
 def control_args(profile: dict) -> SimpleNamespace:
-    """Configuration for the direct neural-control PINN teaching run."""
+    """Configuration for the direct neural-control PINN tutorial run."""
     cfg = profile["control"]
     return SimpleNamespace(
         smoke=False,
@@ -176,7 +176,7 @@ def control_args(profile: dict) -> SimpleNamespace:
 
 
 def pmp_args(profile: dict) -> SimpleNamespace:
-    """Configuration for the PMP-informed PINN teaching run."""
+    """Configuration for the PMP-informed PINN tutorial run."""
     cfg = profile["pmp"]
     return SimpleNamespace(
         smoke=False,
@@ -623,7 +623,7 @@ def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: l
     )
     text = f"""# Training Summary
 
-These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` optimizer iterations per method. The teaching profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` optimizer iterations per method. The default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
 
 ## Profile Parameters
 
@@ -643,7 +643,7 @@ These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` 
 | Direct control PINN total loss | {control[0]["loss"]:.3e} | {control[-1]["loss"]:.3e} | {reduction(control[0]["loss"], control[-1]["loss"]):.3e} |
 | PMP-informed stationarity loss | {pmp[0]["stationarity_loss"]:.3e} | {pmp[-1]["stationarity_loss"]:.3e} | {reduction(pmp[0]["stationarity_loss"], pmp[-1]["stationarity_loss"]):.3e} |
 
-The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this teaching run, the stationarity residual is the most important quick sanity signal.
+The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this tutorial run, the stationarity residual is the most important quick sanity signal.
 
 ## Baseline Comparison Snapshot
 

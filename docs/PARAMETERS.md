@@ -37,7 +37,7 @@ These are the values used by `python scripts/run_training_iterations.py`.
 
 ## GPU-Oriented Diagnostic Profile
 
-Use this after the smoke tests and teaching profile pass:
+Use this after the smoke tests and default profile pass:
 
 ```bash
 python scripts/run_training_iterations.py --profile gpu

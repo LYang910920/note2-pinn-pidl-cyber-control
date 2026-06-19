@@ -1,6 +1,6 @@
 # Source Code Guide
 
-The `src/` folder contains four independent teaching examples.  Each file can be run directly with `--smoke` for a fast execution check.
+The `src/` folder contains four independent tutorial examples.  Each file can be run directly with `--smoke` for a fast execution check.
 
 ## State Convention
 
@@ -56,7 +56,7 @@ python src/experiment_profiles.py
 
 Pick the closest profile, then change one part at a time: state variables, known dynamics, observations, loss terms, control bounds, Hamiltonian, or architecture.
 
-## Teaching-Code Boundaries
+## Tutorial Boundaries
 
 These are compact examples for learning and adaptation.  For research-grade studies, add multiple seeds, held-out trajectories, uncertainty estimates, and identifiability checks.
 

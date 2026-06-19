@@ -1,6 +1,6 @@
 # Extending Note 2
 
-Keep the same loss decomposition while replacing the small teaching model:
+Keep the same loss decomposition while replacing the small tutorial model:
 
 ```text
 state network -> dynamics residual -> data/boundary loss -> diagnostics
@@ -29,7 +29,7 @@ For larger models, move from population-level SIR states to degree-level PINNs, 
 
 ## From Tutorial Code To Paper Models
 
-| Paper-model ingredient | First teaching hook | What to preserve while extending |
+| Paper-model ingredient | First tutorial hook | What to preserve while extending |
 |---|---|---|
 | More compartments or hidden states | `StateNet`, `sir_rhs`, `f_state` | state constraints and residual dimensions |
 | Sparse, noisy, or partial observations | `generate_data`, data loss blocks | separate data, initial/boundary, and residual losses |
@@ -52,7 +52,7 @@ Companion repository: https://github.com/LYang910920/network-control-differentia
 
 ## Research-Grade Checklist
 
-Before treating a run as evidence rather than a teaching demo:
+Before treating a run as evidence rather than a tutorial run:
 
 1. Run multiple random seeds and report spread.
 2. Add held-out time windows or held-out trajectories.

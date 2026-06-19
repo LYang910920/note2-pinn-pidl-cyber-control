@@ -18,7 +18,7 @@ PYTHON=../.venv/bin/python bash scripts/run_smoke_tests.sh
 
 `run_training_iterations.py` is longer because it is meant to show loss reduction over time.
 
-Use `--iters` to change the length of each PINN/PIDL teaching run:
+Use `--iters` to change the length of each PINN/PIDL tutorial run:
 
 ```bash
 python scripts/run_training_iterations.py --iters 1000
@@ -30,9 +30,9 @@ Use the heavier profile when you want a larger local/GPU run:
 python scripts/run_training_iterations.py --profile gpu
 ```
 
-The GPU-oriented profile increases network width/depth, collocation points, sparse observation points, and optimizer iterations. It uses the same scripts and output files as the teaching profile, so students can compare small and large runs directly.
+The GPU-oriented profile increases network width/depth, collocation points, sparse observation points, and optimizer iterations. It uses the same scripts and output files as the default profile, so students can compare small and large runs directly.
 
-The checked-in CSV files and figures are examples from one deterministic teaching run.  For research claims, rerun with multiple seeds and report uncertainty.
+The checked-in CSV files and figures are examples from one deterministic tutorial run.  For research claims, rerun with multiple seeds and report uncertainty.
 
 `run_training_iterations.py` writes two kinds of evidence:
 
