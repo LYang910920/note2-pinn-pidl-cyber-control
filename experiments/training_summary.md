@@ -1,6 +1,17 @@
 # Training Summary
 
-These diagnostics use longer laptop-friendly runs than the smoke tests.  They are intended to show whether each loss is moving toward a stable low-error regime.
+These diagnostics use the `teaching` profile with `600` optimizer iterations per method. The teaching profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+
+## Profile Parameters
+
+| Method | Width/depth | Data points | Collocation points |
+|---|---:|---:|---:|
+| Inverse PINN | 24/2 | 16 | 70 |
+| PIDL missing mechanism | 24/2 | 18 | 70 |
+| Direct control PINN | 24/2 | n/a | 70 |
+| PMP-informed PINN | 24/2 | n/a | 70 |
+
+## Loss Movement
 
 | Diagnostic | Start | End | End/start |
 |---|---:|---:|---:|

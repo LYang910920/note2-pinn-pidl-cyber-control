@@ -2,6 +2,8 @@
 
 Use this page as the first stop after running `python scripts/run_training_iterations.py`.
 
+Profile used: `teaching` with `600` optimizer iterations per method.
+
 ## 1. What Each Experiment Checks
 
 | Experiment | Main question | Key diagnostics |

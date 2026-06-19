@@ -16,6 +16,7 @@ tutorial note
 1. Open `docs/note2_pinn_pidl_cyber_control.pdf` for the tutorial narrative.
 2. Run `python src/experiment_profiles.py` to see the student-facing method profiles.
 3. Open `docs/PARAMETERS.md` before changing PINN/PIDL hyperparameters.
+4. For a heavier local/GPU diagnostic, run `python scripts/run_training_iterations.py --profile gpu` after the smoke tests pass.
 4. Read `docs/PAPER_WORKFLOW.md` when turning an example into a paper section.
 5. Run `bash scripts/run_smoke_tests.sh` to verify the environment.
 6. Run `python scripts/generate_figures.py` to recreate the figures.

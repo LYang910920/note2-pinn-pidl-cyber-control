@@ -57,6 +57,39 @@ BASELINE_FIELDS = [
     "notes",
 ]
 
+TRAINING_PROFILES = {
+    "teaching": {
+        "iters": 600,
+        "inverse": {"width": 24, "depth": 2, "n_data": 16, "n_collocation": 70},
+        "pidl": {"width": 24, "depth": 2, "n_data": 18, "n_collocation": 70},
+        "control": {"width": 24, "depth": 2, "n_collocation": 70},
+        "pmp": {"width": 24, "depth": 2, "n_collocation": 70},
+    },
+    "gpu": {
+        "iters": 2000,
+        "inverse": {"width": 128, "depth": 5, "n_data": 40, "n_collocation": 400},
+        "pidl": {"width": 128, "depth": 4, "n_data": 50, "n_collocation": 400},
+        "control": {"width": 128, "depth": 4, "n_collocation": 400},
+        "pmp": {"width": 128, "depth": 4, "n_collocation": 400},
+    },
+}
+
+
+def resolve_training_profile(name: str, iters_override: int | None) -> dict:
+    """Return one named PINN/PIDL profile with an optional iteration override."""
+    source = TRAINING_PROFILES[name]
+    profile = {
+        "name": name,
+        "iters": source["iters"],
+        "inverse": dict(source["inverse"]),
+        "pidl": dict(source["pidl"]),
+        "control": dict(source["control"]),
+        "pmp": dict(source["pmp"]),
+    }
+    if iters_override is not None:
+        profile["iters"] = iters_override
+    return profile
+
 
 def baseline_row(**kwargs) -> dict:
     """Create a consistent row for baseline-comparison metrics."""
@@ -77,51 +110,56 @@ def mse(a, b) -> float:
     return float(np.mean((np.asarray(a) - np.asarray(b)) ** 2))
 
 
-def inverse_args(iters: int) -> SimpleNamespace:
+def inverse_args(profile: dict) -> SimpleNamespace:
     """Configuration for the sparse-data inverse PINN teaching run."""
+    cfg = profile["inverse"]
     return SimpleNamespace(
         smoke=False,
-        iters=iters,
-        width=24,
-        depth=2,
-        n_data=16,
-        n_collocation=70,
+        iters=profile["iters"],
+        width=cfg["width"],
+        depth=cfg["depth"],
+        n_data=cfg["n_data"],
+        n_collocation=cfg["n_collocation"],
         noise=0.0,
         lr=1e-3,
         w_ic=10.0,
         w_ode=1.0,
-        log_every=max(1, iters // 24),
+        log_every=max(1, profile["iters"] // 24),
         seed=21,
         return_history=True,
     )
 
 
-def pidl_args(iters: int) -> SimpleNamespace:
+def pidl_args(profile: dict) -> SimpleNamespace:
     """Configuration for the PIDL missing-mechanism teaching run."""
+    cfg = profile["pidl"]
     return SimpleNamespace(
         smoke=False,
-        iters=iters,
-        n_data=18,
-        n_collocation=70,
-        width=24,
+        iters=profile["iters"],
+        n_data=cfg["n_data"],
+        n_collocation=cfg["n_collocation"],
+        width=cfg["width"],
+        depth=cfg["depth"],
         lr=1e-3,
         w_ic=10.0,
         w_res=1.0,
         w_corr=1e-3,
-        log_every=max(1, iters // 24),
+        log_every=max(1, profile["iters"] // 24),
         seed=22,
         return_history=True,
     )
 
 
-def control_args(iters: int) -> SimpleNamespace:
+def control_args(profile: dict) -> SimpleNamespace:
     """Configuration for the direct neural-control PINN teaching run."""
+    cfg = profile["control"]
     return SimpleNamespace(
         smoke=False,
-        iters=iters,
+        iters=profile["iters"],
         T=20.0,
-        n_collocation=70,
-        width=24,
+        n_collocation=cfg["n_collocation"],
+        width=cfg["width"],
+        depth=cfg["depth"],
         lr=1e-3,
         beta=0.8,
         gamma=0.2,
@@ -131,20 +169,22 @@ def control_args(iters: int) -> SimpleNamespace:
         AT=10.0,
         w_res=10.0,
         w_ic=10.0,
-        log_every=max(1, iters // 24),
+        log_every=max(1, profile["iters"] // 24),
         seed=23,
         return_history=True,
     )
 
 
-def pmp_args(iters: int) -> SimpleNamespace:
+def pmp_args(profile: dict) -> SimpleNamespace:
     """Configuration for the PMP-informed PINN teaching run."""
+    cfg = profile["pmp"]
     return SimpleNamespace(
         smoke=False,
-        iters=iters,
+        iters=profile["iters"],
         T=20.0,
-        n_collocation=70,
-        width=24,
+        n_collocation=cfg["n_collocation"],
+        width=cfg["width"],
+        depth=cfg["depth"],
         lr=1e-3,
         beta=0.8,
         gamma=0.2,
@@ -156,7 +196,7 @@ def pmp_args(iters: int) -> SimpleNamespace:
         w_costate=1.0,
         w_stat=1.0,
         w_bc=10.0,
-        log_every=max(1, iters // 24),
+        log_every=max(1, profile["iters"] // 24),
         seed=24,
         return_history=True,
     )
@@ -383,7 +423,7 @@ def train_rollout_optimized_control(args: SimpleNamespace, iters: int = 450, n_s
     the same original ODE rollout metric used for the fixed-control baselines.
     """
     torch.manual_seed(args.seed + 200)
-    control = ControlNet(width=args.width, umax=args.umax).to(DEVICE)
+    control = ControlNet(width=args.width, depth=getattr(args, "depth", 2), umax=args.umax).to(DEVICE)
     opt = torch.optim.Adam(control.parameters(), lr=args.lr)
     t_grid = torch.linspace(0.0, args.T, n_steps, device=DEVICE).view(-1, 1)
     dt = args.T / (n_steps - 1)
@@ -570,7 +610,7 @@ def best_by_topic(rows: list[dict], topic: str) -> dict:
     return min(topic_rows, key=lambda row: numeric(row, "primary_value"))
 
 
-def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict]) -> None:
+def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict], profile: dict) -> None:
     inv = histories["inverse"]
     pidl = histories["pidl"]
     control = histories["control"]
@@ -583,7 +623,18 @@ def write_summary(path: Path, histories: dict[str, list[dict]], baseline_rows: l
     )
     text = f"""# Training Summary
 
-These diagnostics use longer laptop-friendly runs than the smoke tests.  They are intended to show whether each loss is moving toward a stable low-error regime.
+These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` optimizer iterations per method. The teaching profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+
+## Profile Parameters
+
+| Method | Width/depth | Data points | Collocation points |
+|---|---:|---:|---:|
+| Inverse PINN | {profile["inverse"]["width"]}/{profile["inverse"]["depth"]} | {profile["inverse"]["n_data"]} | {profile["inverse"]["n_collocation"]} |
+| PIDL missing mechanism | {profile["pidl"]["width"]}/{profile["pidl"]["depth"]} | {profile["pidl"]["n_data"]} | {profile["pidl"]["n_collocation"]} |
+| Direct control PINN | {profile["control"]["width"]}/{profile["control"]["depth"]} | n/a | {profile["control"]["n_collocation"]} |
+| PMP-informed PINN | {profile["pmp"]["width"]}/{profile["pmp"]["depth"]} | n/a | {profile["pmp"]["n_collocation"]} |
+
+## Loss Movement
 
 | Diagnostic | Start | End | End/start |
 |---|---:|---:|---:|
@@ -609,7 +660,7 @@ Open `figures/baseline_comparison.png` for the visual comparison and `experiment
     path.write_text(text)
 
 
-def write_output_preview(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict]) -> None:
+def write_output_preview(path: Path, histories: dict[str, list[dict]], baseline_rows: list[dict], profile: dict) -> None:
     """Write a short categorized guide to the generated Note 2 outputs."""
     inv = histories["inverse"]
     pidl = histories["pidl"]
@@ -620,6 +671,8 @@ def write_output_preview(path: Path, histories: dict[str, list[dict]], baseline_
     text = f"""# Output Preview
 
 Use this page as the first stop after running `python scripts/run_training_iterations.py`.
+
+Profile used: `{profile["name"]}` with `{profile["iters"]}` optimizer iterations per method.
 
 ## 1. What Each Experiment Checks
 
@@ -683,16 +736,18 @@ The direct-control and PMP-informed PINN panels above are training diagnostics. 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run training-iteration experiments for Note 2.")
-    parser.add_argument("--iters", type=int, default=600, help="Iteration count for each PINN/PIDL diagnostic.")
+    parser.add_argument("--profile", choices=sorted(TRAINING_PROFILES), default="teaching", help="Named PINN/PIDL training profile.")
+    parser.add_argument("--iters", type=int, default=None, help="Override iteration count for each PINN/PIDL diagnostic.")
     args = parser.parse_args()
+    profile = resolve_training_profile(args.profile, args.iters)
 
     exp_dir = ROOT / "experiments"
     fig_dir = ROOT / "figures"
 
-    inv_args = inverse_args(args.iters)
-    pidl_cfg = pidl_args(args.iters)
-    control_cfg = control_args(args.iters)
-    pmp_cfg = pmp_args(args.iters)
+    inv_args = inverse_args(profile)
+    pidl_cfg = pidl_args(profile)
+    control_cfg = control_args(profile)
+    pmp_cfg = pmp_args(profile)
 
     inverse_model, beta, gamma, inverse_history = train_inverse_pinn(inv_args)
     pidl_state, pidl_correction, pidl_history = train_pidl(pidl_cfg)
@@ -716,8 +771,8 @@ def main() -> None:
     write_csv(exp_dir / "control_pinn_training_history.csv", control_history)
     write_csv(exp_dir / "pmp_informed_pinn_training_history.csv", pmp_history)
     write_csv(exp_dir / "baseline_comparison_metrics.csv", baseline_rows)
-    write_output_preview(exp_dir / "OUTPUT_PREVIEW.md", histories, baseline_rows)
-    write_summary(exp_dir / "training_summary.md", histories, baseline_rows)
+    write_output_preview(exp_dir / "OUTPUT_PREVIEW.md", histories, baseline_rows, profile)
+    write_summary(exp_dir / "training_summary.md", histories, baseline_rows, profile)
     plot_training_diagnostics(fig_dir / "training_iteration_diagnostics.png", histories)
     plot_baseline_comparison(fig_dir / "baseline_comparison.png", baseline_rows)
 

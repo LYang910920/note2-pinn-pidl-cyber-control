@@ -104,6 +104,12 @@ These examples are teaching code, not calibrated cyber-risk models.  For researc
 
 Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
 
+For a heavier local/GPU diagnostic after the smoke tests pass, use:
+
+```bash
+python scripts/run_training_iterations.py --profile gpu
+```
+
 The reusable numerical/model helpers are imported from the foundation package `cybercontrol`, especially the Torch SIR RHS, bounded control networks, simplex state networks, positive parameter transforms, autograd time derivatives, RK4 data generation, plotting helpers, and CSV writing.
 
 ## Related Tutorial Repositories

@@ -53,6 +53,7 @@ PROFILES: dict[str, NeuralControlProfile] = {
             ("learning rate", "1e-3"),
             ("loss weights", "w_ic=10.0, w_ode=1.0"),
             ("seed", "21 in diagnostics; CLI default 1"),
+            ("GPU profile", "width/depth=128/5, n_data=40, n_collocation=400, iters=2000"),
         ),
     ),
     "pidl-missing-mechanism": NeuralControlProfile(
@@ -73,6 +74,7 @@ PROFILES: dict[str, NeuralControlProfile] = {
             ("learning rate", "1e-3"),
             ("loss weights", "w_ic=10.0, w_res=1.0, w_corr=1e-3"),
             ("seed", "22 in diagnostics; CLI default 2"),
+            ("GPU profile", "width/depth=128/4, n_data=50, n_collocation=400, iters=2000"),
         ),
     ),
     "direct-control-pinn": NeuralControlProfile(
@@ -94,6 +96,7 @@ PROFILES: dict[str, NeuralControlProfile] = {
             ("control/objective", "umax=1.0, A=10.0, B=1.0, AT=10.0"),
             ("loss weights", "w_res=10.0, w_ic=10.0"),
             ("seed", "23 in diagnostics; CLI default 3"),
+            ("GPU profile", "width/depth=128/4, n_collocation=400, iters=2000"),
         ),
     ),
     "pmp-informed-pinn": NeuralControlProfile(
@@ -115,6 +118,7 @@ PROFILES: dict[str, NeuralControlProfile] = {
             ("control/objective", "umax=1.0, A=10.0, B=1.0, AT=10.0"),
             ("loss weights", "w_state=10.0, w_costate=1.0, w_stat=1.0, w_bc=10.0"),
             ("seed", "24 in diagnostics; CLI default 4"),
+            ("GPU profile", "width/depth=128/4, n_collocation=400, iters=2000"),
         ),
     ),
 }

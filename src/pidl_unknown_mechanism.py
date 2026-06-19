@@ -51,9 +51,9 @@ def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
 
 
 class CorrectionNet(nn.Module):
-    def __init__(self, width=64):
+    def __init__(self, width=64, depth=2):
         super().__init__()
-        self.net = MLP(3, 1, width=width, depth=2)
+        self.net = MLP(3, 1, width=width, depth=depth)
 
     def forward(self, x):
         # softplus makes the correction nonnegative.  Remove it if sign is unknown.
@@ -70,8 +70,9 @@ def train(args):
     t_all, x_all = generate()
     idx = torch.linspace(0, len(t_all)-1, args.n_data).long()
     t_data = t_all[idx].to(DEVICE); I_data = x_all[idx, 1:2].to(DEVICE)
-    state_net = SimplexStateNet(width=args.width, depth=2).to(DEVICE)
-    corr_net = CorrectionNet(args.width).to(DEVICE)
+    depth = getattr(args, "depth", 2)
+    state_net = SimplexStateNet(width=args.width, depth=depth).to(DEVICE)
+    corr_net = CorrectionNet(args.width, depth=depth).to(DEVICE)
     beta_raw = nn.Parameter(torch.tensor(0.0, device=DEVICE))
     gamma_raw = nn.Parameter(torch.tensor(-1.0, device=DEVICE))
     opt = torch.optim.Adam(list(state_net.parameters()) + list(corr_net.parameters()) + [beta_raw, gamma_raw], lr=args.lr)
@@ -124,6 +125,7 @@ if __name__ == "__main__":
     p.add_argument("--n-data", type=int, default=40, help="Number of sparse infected-observation points.")
     p.add_argument("--n-collocation", type=int, default=200, help="Number of collocation points.")
     p.add_argument("--width", type=int, default=64, help="Hidden width for state/correction networks.")
+    p.add_argument("--depth", type=int, default=2, help="Hidden-layer depth for state/correction networks.")
     p.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate.")
     p.add_argument("--w-ic", type=float, default=10.0, help="Weight on initial-condition loss.")
     p.add_argument("--w-res", type=float, default=1.0, help="Weight on residual loss.")
@@ -136,5 +138,6 @@ if __name__ == "__main__":
         args.n_collocation = 50
         args.n_data = 10
         args.width = 16
+        args.depth = 2
         args.log_every = 1
     train(args)

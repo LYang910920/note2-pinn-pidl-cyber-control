@@ -10,6 +10,7 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | Fast smoke check | `bash scripts/run_smoke_tests.sh` |
 | Rebuild figures | `python scripts/generate_figures.py` |
 | Run longer diagnostics | `python scripts/run_training_iterations.py` |
+| Run heavier GPU-oriented diagnostics | `python scripts/run_training_iterations.py --profile gpu` |
 
 ## Shared Model Parameters
 
@@ -33,6 +34,21 @@ These are the values used by `python scripts/run_training_iterations.py`.
 | PIDL missing mechanism | `iters=600`, `width=24`, `n_data=18`, `n_collocation=70`, `lr=1e-3`, `seed=22` | `w_ic=10.0`, `w_res=1.0`, `w_corr=1e-3` |
 | Direct control PINN | `iters=600`, `width=24`, `n_collocation=70`, `lr=1e-3`, `seed=23` | `A=10.0`, `B=1.0`, `AT=10.0`, `w_res=10.0`, `w_ic=10.0` |
 | PMP-informed PINN | `iters=600`, `width=24`, `n_collocation=70`, `lr=1e-3`, `seed=24` | `A=10.0`, `B=1.0`, `AT=10.0`, `w_state=10.0`, `w_costate=1.0`, `w_stat=1.0`, `w_bc=10.0` |
+
+## GPU-Oriented Diagnostic Profile
+
+Use this after the smoke tests and teaching profile pass:
+
+```bash
+python scripts/run_training_iterations.py --profile gpu
+```
+
+| Method | Larger neural/training settings |
+|---|---|
+| Inverse PINN | `iters=2000`, `width=128`, `depth=5`, `n_data=40`, `n_collocation=400` |
+| PIDL missing mechanism | `iters=2000`, `width=128`, `depth=4`, `n_data=50`, `n_collocation=400` |
+| Direct control PINN | `iters=2000`, `width=128`, `depth=4`, `n_collocation=400` |
+| PMP-informed PINN | `iters=2000`, `width=128`, `depth=4`, `n_collocation=400` |
 
 ## Script CLI Defaults
 
