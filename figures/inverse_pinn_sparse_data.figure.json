@@ -1,0 +1,20 @@
+{
+  "dpi": 600,
+  "files": [
+    "inverse_pinn_sparse_data.pdf",
+    "inverse_pinn_sparse_data.png"
+  ],
+  "formats": [
+    "pdf",
+    "png"
+  ],
+  "height_in": 3.6,
+  "metadata": {
+    "caption_hint": "Sparse observed I(t) with hidden S(t) and R(t).",
+    "data": "sparse infected-state observations",
+    "model": "SIR malware inverse PINN"
+  },
+  "primary_file_bytes": 23352,
+  "style": "publication",
+  "width_in": 7.16
+}

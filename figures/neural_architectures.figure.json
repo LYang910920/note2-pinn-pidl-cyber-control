@@ -1,0 +1,19 @@
+{
+  "dpi": 220,
+  "files": [
+    "neural_architectures.png",
+    "neural_architectures.pdf"
+  ],
+  "formats": [
+    "png",
+    "pdf"
+  ],
+  "height_in": 4.8,
+  "metadata": {
+    "caption_hint": "PINN/PIDL network and residual structure.",
+    "figure_type": "guide diagram"
+  },
+  "primary_file_bytes": 121580,
+  "style": "guide",
+  "width_in": 11.0
+}

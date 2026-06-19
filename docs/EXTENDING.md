@@ -27,7 +27,7 @@ That command prints the method profiles. Pick the closest one before editing cod
 
 For larger models, move from population-level SIR states to degree-level PINNs, node-level vector states, graph-neural PINNs, operator-learning models, or hybrid neural control with jump losses. Keep the first version small and testable before scaling architecture or data.
 
-Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generates synthetic truth from the canonical foundation SIPRS simulator, observes infected probabilities for selected nodes and times, enforces graph ODE residuals at collocation points, and reports held-out state MSE plus beta/gamma error. The current time-only MLP is deliberately small; for larger graphs, replace it with node features, community pooling, or a graph encoder before claiming graph generalization.
+Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generates synthetic truth from the canonical foundation SIPRS simulator, observes infected probabilities for selected nodes and times, enforces graph ODE residuals at collocation points, and reports held-out state MSE plus beta/gamma error. The current time-only MLP is a compact starting point; for larger graphs, replace it with node features, community pooling, or a graph encoder before claiming graph generalization.
 
 ## Node-SIPRS Inverse PINN Model Card
 

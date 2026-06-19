@@ -10,7 +10,6 @@ the neural architectures.  Training diagnostics live in
 
 from functools import partial
 from pathlib import Path
-import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -18,12 +17,20 @@ import matplotlib.pyplot as plt
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
 from shared_setup import ensure_foundation_package
 
 ensure_foundation_package()
-from cybercontrol.plotting import add_arrow, add_box
+from cybercontrol.plotting import (
+    add_arrow,
+    add_box,
+    guide_style,
+    panel_label,
+    publication_style,
+    save_guide_figure,
+    save_publication_figure,
+    style_axis,
+)
 from inverse_pinn_sir_malware import generate_data
 from pidl_unknown_mechanism import generate
 
@@ -34,18 +41,24 @@ def plot_sparse_inverse_data(output_dir: Path) -> None:
     t, x = generate_data(n_grid=240)
     idx = torch.linspace(0, len(t) - 1, 24).long()
 
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(t[:, 0], x[:, 0], label="Susceptible")
-    ax.plot(t[:, 0], x[:, 1], label="Compromised")
-    ax.plot(t[:, 0], x[:, 2], label="Recovered")
+    with publication_style():
+        fig, ax = plt.subplots(figsize=(7.16, 3.6))
+    ax.plot(t[:, 0], x[:, 0], label="Susceptible", linestyle="-")
+    ax.plot(t[:, 0], x[:, 1], label="Compromised", linestyle="--")
+    ax.plot(t[:, 0], x[:, 2], label="Recovered", linestyle="-.")
     ax.scatter(t[idx, 0], x[idx, 1], s=22, color="black", label="Sparse I(t) observations")
-    ax.set_title("Inverse PINN setup: sparse observations with hidden states")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Population share")
-    ax.legend(loc="best")
-    ax.grid(alpha=0.25)
+    panel_label(ax, "Sparse inverse-PINN observations")
+    style_axis(ax, xlabel="Time", ylabel="Population share", legend=True)
     fig.tight_layout()
-    fig.savefig(output_dir / "inverse_pinn_sparse_data.png", dpi=180)
+    save_publication_figure(
+        fig,
+        output_dir / "inverse_pinn_sparse_data",
+        metadata={
+            "model": "SIR malware inverse PINN",
+            "data": "sparse infected-state observations",
+            "caption_hint": "Sparse observed I(t) with hidden S(t) and R(t).",
+        },
+    )
     plt.close(fig)
 
 
@@ -54,27 +67,33 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
     q = 1.2
     correction = q * x[:, 0] * x[:, 1] * x[:, 1]
 
-    fig, axes = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
-    axes[0].plot(t[:, 0], x[:, 0], label="Susceptible")
-    axes[0].plot(t[:, 0], x[:, 1], label="Compromised")
-    axes[0].plot(t[:, 0], x[:, 2], label="Recovered")
-    axes[0].set_ylabel("Population share")
-    axes[0].set_title("PIDL synthetic system with a missing nonlinear mechanism")
-    axes[0].legend(loc="best")
-    axes[0].grid(alpha=0.25)
+    with publication_style():
+        fig, axes = plt.subplots(2, 1, figsize=(7.16, 4.6), sharex=True)
+    axes[0].plot(t[:, 0], x[:, 0], label="Susceptible", linestyle="-")
+    axes[0].plot(t[:, 0], x[:, 1], label="Compromised", linestyle="--")
+    axes[0].plot(t[:, 0], x[:, 2], label="Recovered", linestyle="-.")
+    panel_label(axes[0], "(a) PIDL synthetic state")
+    style_axis(axes[0], ylabel="Population share", legend=True)
 
     axes[1].plot(t[:, 0], correction, color="black", label="q S I^2")
-    axes[1].set_xlabel("Time")
-    axes[1].set_ylabel("Missing term")
-    axes[1].legend(loc="best")
-    axes[1].grid(alpha=0.25)
+    panel_label(axes[1], "(b) unknown-mechanism target")
+    style_axis(axes[1], xlabel="Time", ylabel="Missing term", legend=True)
     fig.tight_layout()
-    fig.savefig(output_dir / "pidl_missing_mechanism.png", dpi=180)
+    save_publication_figure(
+        fig,
+        output_dir / "pidl_missing_mechanism",
+        metadata={
+            "model": "PIDL missing-mechanism example",
+            "unknown_term": "q S I^2",
+            "caption_hint": "Known SIR physics plus a synthetic missing nonlinear correction.",
+        },
+    )
     plt.close(fig)
 
 
 def plot_neural_architectures(output_dir: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8))
+    with guide_style():
+        fig, axes = plt.subplots(1, 2, figsize=(11, 4.8))
 
     ax = axes[0]
     diagram_box(ax, (0.1, 2.75), "time t", fc="#e8f1ff")
@@ -86,7 +105,7 @@ def plot_neural_architectures(output_dir: Path) -> None:
     add_arrow(ax, (4.0, 3.04), (4.5, 3.04))
     add_arrow(ax, (6.6, 3.04), (7.1, 3.54))
     add_arrow(ax, (6.6, 3.04), (7.1, 2.44))
-    ax.set_title("Inverse PINN / PIDL state learner")
+    panel_label(ax, "(a) inverse PINN / PIDL state learner")
     ax.set_xlim(0, 9.7)
     ax.set_ylim(1.2, 4.2)
     ax.axis("off")
@@ -107,13 +126,18 @@ def plot_neural_architectures(output_dir: Path) -> None:
     add_arrow(ax, (6.7, 2.54), (7.2, 3.39))
     add_arrow(ax, (6.7, 2.54), (7.2, 2.54))
     add_arrow(ax, (6.7, 2.54), (7.2, 1.69))
-    ax.set_title("PMP-informed control PINN")
+    panel_label(ax, "(b) PMP-informed control PINN")
     ax.set_xlim(0, 9.5)
     ax.set_ylim(0.7, 4.2)
     ax.axis("off")
 
     fig.tight_layout()
-    fig.savefig(output_dir / "neural_architectures.png", dpi=180)
+    save_guide_figure(
+        fig,
+        output_dir / "neural_architectures",
+        formats=("png", "pdf"),
+        metadata={"figure_type": "guide diagram", "caption_hint": "PINN/PIDL network and residual structure."},
+    )
     plt.close(fig)
 
 

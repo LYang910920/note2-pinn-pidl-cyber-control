@@ -172,7 +172,7 @@ def describe_profiles() -> list[dict[str, str]]:
 if __name__ == "__main__":
     for row in describe_profiles():
         print(
-            f"{row['name']}: method={row['method']}; state={row['state_level']}; "
-            f"losses={row['key_losses']}; edit={row['first_functions_to_edit']}; "
-            f"hyperparameters={row['hyperparameters']}; run={row['quick_command']}"
+            f"{row['name']}: method={row['method']}, state={row['state_level']}, "
+            f"losses={row['key_losses']}, edit={row['first_functions_to_edit']}, "
+            f"hyperparameters={row['hyperparameters']}, run={row['quick_command']}"
         )

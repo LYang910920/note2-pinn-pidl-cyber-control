@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "note2-pinn-pidl-cyber-control"
+version = "0.1.0"
+description = "Tutorial code for PINN, PIDL, inverse modeling, and neural optimal-control examples in cyber systems."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Luxing Yang"}]
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "networkx",
+    "torch",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools]
+py-modules = [
+    "control_pinn_malware",
+    "experiment_profiles",
+    "inverse_pinn_sir_malware",
+    "node_siprs_inverse_pinn",
+    "pidl_unknown_mechanism",
+    "pmp_informed_pinn_malware",
+    "shared_setup",
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts"]

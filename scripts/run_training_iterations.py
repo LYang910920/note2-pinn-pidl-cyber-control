@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import sys
 import textwrap
 from types import SimpleNamespace
 
@@ -23,22 +22,20 @@ import numpy as np
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
 from shared_setup import ensure_foundation_package
 
 ensure_foundation_package()
 from cybercontrol.diagnostics import add_caption, diagnostic_terms_for, write_diagnostic_glossary
 from cybercontrol.io import write_csv
-from cybercontrol.torch_utils import rk4_step_torch
+from cybercontrol.plotting import panel_label, publication_style, save_publication_figure, style_axis
+from cybercontrol.torch_utils import configure_torch, rk4_step_torch
 from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
 from inverse_pinn_sir_malware import generate_data as generate_inverse_data, train as train_inverse_pinn
 from pidl_unknown_mechanism import generate as generate_pidl_data
 from pidl_unknown_mechanism import known_rhs as pidl_known_rhs
 from pidl_unknown_mechanism import train as train_pidl
 from pmp_informed_pinn_malware import train as train_pmp_pinn
-
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 BASELINE_FIELDS = [
     "topic",
@@ -225,18 +222,19 @@ def pmp_args(profile: dict) -> SimpleNamespace:
 
 
 def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]]) -> None:
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    with publication_style():
+        fig, axes = plt.subplots(2, 2, figsize=(7.16, 5.2))
     axes = axes.ravel()
 
     axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["loss"] for r in histories["inverse"]], label="total loss")
     axes[0].semilogy([r["iteration"] for r in histories["inverse"]], [r["ode_loss"] for r in histories["inverse"]], label="ODE residual loss")
-    axes[0].set_title("Sparse-data inverse PINN: data fit plus ODE consistency")
+    panel_label(axes[0], "(a) sparse-data inverse PINN")
     axes[0].set_ylabel("Loss (log scale)")
 
     pidl_it = [r["iteration"] for r in histories["pidl"]]
     axes[1].semilogy(pidl_it, [r["loss"] for r in histories["pidl"]], label="total loss")
     axes[1].semilogy(pidl_it, [r["residual_loss"] for r in histories["pidl"]], label="known-model residual loss")
-    axes[1].set_title("PIDL missing mechanism: residual loss and correction size")
+    panel_label(axes[1], "(b) PIDL missing mechanism")
     axes[1].set_ylabel("Loss (log scale)")
     ax_pidl = axes[1].twinx()
     ax_pidl.plot(pidl_it, [r["mean_correction"] for r in histories["pidl"]], color="#e45756", label="mean learned correction")
@@ -246,7 +244,7 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     axes[2].semilogy(control_it, [r["loss"] for r in histories["control"]], label="total loss")
     axes[2].semilogy(control_it, [r["objective"] for r in histories["control"]], label="control objective")
     axes[2].semilogy(control_it, [r["residual_loss"] for r in histories["control"]], label="state ODE residual loss")
-    axes[2].set_title("Direct control PINN: control objective and dynamics residual")
+    panel_label(axes[2], "(c) direct control PINN")
     axes[2].set_ylabel("Loss / objective (log scale)")
     ax_control = axes[2].twinx()
     ax_control.plot(control_it, [r["mean_control"] for r in histories["control"]], color="#e45756", label="mean control intensity")
@@ -256,13 +254,11 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["state_loss"] for r in histories["pmp"]], label="state residual loss")
     axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["costate_loss"] for r in histories["pmp"]], label="costate residual loss")
     axes[3].semilogy([r["iteration"] for r in histories["pmp"]], [r["stationarity_loss"] for r in histories["pmp"]], label="stationarity loss")
-    axes[3].set_title("PMP-informed PINN: optimality residuals")
+    panel_label(axes[3], "(d) PMP-informed PINN")
     axes[3].set_ylabel("Residual loss (log scale)")
 
     for ax in axes:
-        ax.set_xlabel("Iteration")
-        ax.grid(alpha=0.25)
-        ax.legend(fontsize=8)
+        style_axis(ax, xlabel="Iteration", legend=True)
     axes[1].legend(loc="upper left", fontsize=8)
     axes[2].legend(loc="upper left", fontsize=8)
     ax_pidl.legend(loc="upper right", fontsize=8)
@@ -274,7 +270,15 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     )
     fig.tight_layout(rect=(0, 0.065, 1, 1))
     output_path.parent.mkdir(exist_ok=True)
-    fig.savefig(output_path, dpi=180)
+    save_publication_figure(
+        fig,
+        output_path,
+        metadata={
+            "figure_type": "training diagnostics",
+            "x_axis": "optimizer iteration",
+            "caption_hint": "Loss components are plotted against optimizer iteration, not physical time.",
+        },
+    )
     plt.close(fig)
 
 
@@ -292,7 +296,7 @@ def roll_wrong_parameter_sir(beta: float, gamma: float, T: float = 20.0, n_grid:
     return to_numpy(x)
 
 
-def evaluate_inverse_baselines(model, beta: float, gamma: float, args: SimpleNamespace) -> list[dict]:
+def evaluate_inverse_baselines(model, beta: float, gamma: float, args: SimpleNamespace, device: str) -> list[dict]:
     """Compare the inverse PINN against simple sparse-data baselines."""
     t_all, x_all = generate_inverse_data(noise=args.noise)
     t_np = to_numpy(t_all[:, 0])
@@ -303,7 +307,7 @@ def evaluate_inverse_baselines(model, beta: float, gamma: float, args: SimpleNam
 
     model.eval()
     with torch.no_grad():
-        x_pinn = to_numpy(model(t_all.to(DEVICE)))
+        x_pinn = to_numpy(model(t_all.to(device)))
 
     i_interp = np.interp(t_np, t_sparse, i_sparse)
     x_interp = np.column_stack([1.0 - i_interp, i_interp, np.zeros_like(i_interp)])
@@ -359,7 +363,7 @@ def roll_known_pidl_baseline(T: float = 20.0, n_grid: int = 400, beta: float = 0
     return to_numpy(x)
 
 
-def evaluate_pidl_baselines(state_net, corr_net) -> list[dict]:
+def evaluate_pidl_baselines(state_net, corr_net, device: str) -> list[dict]:
     """Compare PIDL with the known-mechanism-only baseline."""
     t_all, x_all = generate_pidl_data(n=400)
     x_true = to_numpy(x_all)
@@ -368,8 +372,8 @@ def evaluate_pidl_baselines(state_net, corr_net) -> list[dict]:
     state_net.eval()
     corr_net.eval()
     with torch.no_grad():
-        x_pidl = to_numpy(state_net(t_all.to(DEVICE)))
-        correction_pred = to_numpy(corr_net(x_all.to(DEVICE)))[:, 0]
+        x_pidl = to_numpy(state_net(t_all.to(device)))
+        correction_pred = to_numpy(corr_net(x_all.to(device)))[:, 0]
     correction_true = to_numpy(1.2 * x_all[:, 0] * x_all[:, 1] * x_all[:, 1])
 
     return [
@@ -451,18 +455,18 @@ def rollout_control_objective(control_source, args: SimpleNamespace, n_grid: int
     }
 
 
-def train_rollout_optimized_control(args: SimpleNamespace, iters: int = 450, n_steps: int = 120):
+def train_rollout_optimized_control(args: SimpleNamespace, device: str, iters: int = 450, n_steps: int = 120):
     """Train a small neural open-loop controller through differentiable RK4 rollout.
 
     This is included as a comparison point for the control topic: it optimizes
     the same original ODE rollout metric used for the fixed-control baselines.
     """
     torch.manual_seed(args.seed + 200)
-    control = ControlNet(width=args.width, depth=getattr(args, "depth", 2), umax=args.umax).to(DEVICE)
+    control = ControlNet(width=args.width, depth=getattr(args, "depth", 2), umax=args.umax).to(device)
     opt = torch.optim.Adam(control.parameters(), lr=args.lr)
-    t_grid = torch.linspace(0.0, args.T, n_steps, device=DEVICE).view(-1, 1)
+    t_grid = torch.linspace(0.0, args.T, n_steps, device=device).view(-1, 1)
     dt = args.T / (n_steps - 1)
-    x0 = torch.tensor([[0.95, 0.05, 0.0]], device=DEVICE)
+    x0 = torch.tensor([[0.95, 0.05, 0.0]], device=device)
 
     for _ in range(iters):
         opt.zero_grad()
@@ -568,7 +572,7 @@ def annotate_bars(ax, bars, values, fmt="{:.2g}") -> None:
         )
 
 
-def plot_metric_bars(ax, rows: list[dict], metric: str, title: str, ylabel: str, log: bool = False) -> None:
+def plot_metric_bars(ax, rows: list[dict], metric: str, panel: str, ylabel: str, log: bool = False) -> None:
     labels = [textwrap.fill(row["plot_label"], 12) for row in rows]
     values = [numeric(row, metric) for row in rows]
     colors = ["#2f5d8c", "#db8f34", "#4f9d69", "#8a5fbf", "#c94c4c", "#4c6f79"][: len(rows)]
@@ -579,7 +583,7 @@ def plot_metric_bars(ax, rows: list[dict], metric: str, title: str, ylabel: str,
             ax.set_yscale("log")
             ax.set_ylim(max(min(positive) * 0.35, 1e-7), max(positive) * 4.0)
     annotate_bars(ax, bars, values, fmt="{:.2e}" if log else "{:.2f}")
-    ax.set_title(title, fontsize=11)
+    panel_label(ax, panel)
     ax.set_ylabel(ylabel)
     ax.tick_params(axis="x", labelsize=8)
     ax.grid(axis="y", alpha=0.25)
@@ -593,12 +597,13 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
     pidl_rows = [row for row in rows if row["topic"] == "PIDL missing mechanism"]
     control_rows = [row for row in rows if row["topic"] == "Controlled malware mitigation"]
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
+    with publication_style():
+        fig, axes = plt.subplots(2, 2, figsize=(7.16, 5.2))
     plot_metric_bars(
         axes[0, 0],
         inverse_rows,
         "state_mse",
-        "Sparse-data inverse PINN: hidden-state error vs baselines",
+        "(a) inverse-PINN state error",
         "Full S/I/R MSE (lower is better)",
         log=True,
     )
@@ -606,7 +611,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         axes[0, 1],
         pidl_rows,
         "state_mse",
-        "PIDL missing mechanism: learned correction vs known-model baseline",
+        "(b) PIDL state error",
         "Full S/I/R MSE (lower is better)",
         log=True,
     )
@@ -614,7 +619,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         axes[1, 0],
         control_rows,
         "objective",
-        "Controlled malware mitigation: rollout objective",
+        "(c) rollout objective",
         "Objective: infected burden + control cost",
         log=False,
     )
@@ -622,21 +627,26 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         axes[1, 1],
         control_rows,
         "cumulative_infected",
-        "Controlled malware mitigation: epidemic burden",
+        "(d) epidemic burden",
         "Integral of compromised devices",
         log=False,
     )
-
-    fig.suptitle("Note 2 Baseline Comparisons: learned methods against simple alternatives", fontsize=15)
     caption = (
         "Caption: inverse PINN is compared with sparse interpolation and a wrong-parameter SIR rollout, meaning the SIR equation is simulated with inaccurate beta/gamma; "
         "PIDL is compared with the known SIR model without the missing term; control methods are evaluated "
         "by rolling the original controlled malware model forward under each policy. Lower bars are better."
     )
     add_caption(fig, caption, width=150, y=0.01)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.95))
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     output_path.parent.mkdir(exist_ok=True)
-    fig.savefig(output_path, dpi=190)
+    save_publication_figure(
+        fig,
+        output_path,
+        metadata={
+            "figure_type": "baseline comparison",
+            "caption_hint": "Each panel compares methods on the same model family and metric.",
+        },
+    )
     plt.close(fig)
 
 
@@ -780,8 +790,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run training-iteration experiments for Note 2.")
     parser.add_argument("--profile", choices=sorted(TRAINING_PROFILES), default="teaching", help="Named PINN/PIDL training profile.")
     parser.add_argument("--iters", type=int, default=None, help="Override iteration count for each PINN/PIDL diagnostic.")
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto", help="Training device.")
+    parser.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
     args = parser.parse_args()
     profile = resolve_training_profile(args.profile, args.iters)
+    _, script_device, _ = configure_torch(device=args.device, threads=args.threads)
 
     exp_dir = ROOT / "experiments"
     fig_dir = ROOT / "figures"
@@ -790,12 +803,15 @@ def main() -> None:
     pidl_cfg = pidl_args(profile)
     control_cfg = control_args(profile)
     pmp_cfg = pmp_args(profile)
+    for cfg in (inv_args, pidl_cfg, control_cfg, pmp_cfg):
+        cfg.device = script_device
+        cfg.threads = args.threads
 
     inverse_model, beta, gamma, inverse_history = train_inverse_pinn(inv_args)
     pidl_state, pidl_correction, pidl_history = train_pidl(pidl_cfg)
     _, direct_control, control_history = train_control_pinn(control_cfg)
     _, _, pmp_control, pmp_history = train_pmp_pinn(pmp_cfg)
-    rollout_control = train_rollout_optimized_control(control_cfg)
+    rollout_control = train_rollout_optimized_control(control_cfg, script_device)
 
     histories = {
         "inverse": inverse_history,
@@ -804,8 +820,8 @@ def main() -> None:
         "pmp": pmp_history,
     }
     baseline_rows = []
-    baseline_rows.extend(evaluate_inverse_baselines(inverse_model, beta, gamma, inv_args))
-    baseline_rows.extend(evaluate_pidl_baselines(pidl_state, pidl_correction))
+    baseline_rows.extend(evaluate_inverse_baselines(inverse_model, beta, gamma, inv_args, script_device))
+    baseline_rows.extend(evaluate_pidl_baselines(pidl_state, pidl_correction, script_device))
     baseline_rows.extend(evaluate_control_baselines(direct_control, pmp_control, rollout_control, control_cfg))
 
     write_csv(exp_dir / "inverse_pinn_training_history.csv", inverse_history)

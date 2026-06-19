@@ -14,23 +14,19 @@ so that
     x' = f_known(x; beta,gamma) + B g_phi(x)
 where B=[-1,+1,0]^T keeps mass conserved.
 
-This illustrates PIDL: use known physics/mechanism and learn only the missing
-piece.  It is usually easier to interpret and more data-efficient than learning
-the entire vector field as a black box.
+PIDL keeps the known mechanism explicit and assigns the correction network only
+to the residual behavior that the known model cannot explain.
 """
 from __future__ import annotations
 
 import argparse
 import torch
-torch.set_num_threads(1)
 import torch.nn as nn
 from shared_setup import ensure_foundation_package
 
 ensure_foundation_package()
 from cybercontrol.models import sir_rhs_torch as known_rhs
-from cybercontrol.torch_utils import MLP, SimplexStateNet, positive, rk4_step_torch
-
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+from cybercontrol.torch_utils import MLP, SimplexStateNet, configure_torch, positive, rk4_step_torch
 
 
 def true_rhs(x, beta, gamma, q):
@@ -66,19 +62,24 @@ def train(args):
     The known SIR part remains explicit.  The correction network only explains
     residual behavior that the known mechanism cannot capture.
     """
-    torch.manual_seed(args.seed)
+    _, device, _ = configure_torch(
+        seed=args.seed,
+        device=getattr(args, "device", "auto"),
+        threads=getattr(args, "threads", 1),
+    )
     t_all, x_all = generate()
     idx = torch.linspace(0, len(t_all)-1, args.n_data).long()
-    t_data = t_all[idx].to(DEVICE); I_data = x_all[idx, 1:2].to(DEVICE)
+    t_data = t_all[idx].to(device)
+    I_data = x_all[idx, 1:2].to(device)
     depth = getattr(args, "depth", 2)
-    state_net = SimplexStateNet(width=args.width, depth=depth).to(DEVICE)
-    corr_net = CorrectionNet(args.width, depth=depth).to(DEVICE)
-    beta_raw = nn.Parameter(torch.tensor(0.0, device=DEVICE))
-    gamma_raw = nn.Parameter(torch.tensor(-1.0, device=DEVICE))
+    state_net = SimplexStateNet(width=args.width, depth=depth).to(device)
+    corr_net = CorrectionNet(args.width, depth=depth).to(device)
+    beta_raw = nn.Parameter(torch.tensor(0.0, device=device))
+    gamma_raw = nn.Parameter(torch.tensor(-1.0, device=device))
     opt = torch.optim.Adam(list(state_net.parameters()) + list(corr_net.parameters()) + [beta_raw, gamma_raw], lr=args.lr)
-    t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1,1).to(DEVICE); t_f.requires_grad_(True)
-    x0 = torch.tensor([[0.95,0.05,0.0]], device=DEVICE)
-    B = torch.tensor([[-1.0, 1.0, 0.0]], device=DEVICE)
+    t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1,1).to(device); t_f.requires_grad_(True)
+    x0 = torch.tensor([[0.95,0.05,0.0]], device=device)
+    B = torch.tensor([[-1.0, 1.0, 0.0]], device=device)
     history = []
 
     for it in range(args.iters):
@@ -86,7 +87,7 @@ def train(args):
         beta, gamma = positive(beta_raw), positive(gamma_raw)
         x_data_pred = state_net(t_data)
         loss_data = torch.mean((x_data_pred[:,1:2] - I_data)**2)
-        loss_ic = torch.mean((state_net(torch.zeros(1,1,device=DEVICE)) - x0)**2)
+        loss_ic = torch.mean((state_net(torch.zeros(1,1,device=device)) - x0)**2)
         x_f = state_net(t_f)
         dxdt = torch.cat([torch.autograd.grad(x_f[:,j].sum(), t_f, create_graph=True)[0] for j in range(3)], dim=1)
         g = corr_net(x_f)              # shape [N,1]
@@ -132,6 +133,8 @@ if __name__ == "__main__":
     p.add_argument("--w-corr", type=float, default=1e-3, help="Weight on correction regularization.")
     p.add_argument("--log-every", type=int, default=1000, help="Iteration interval for console logs and history rows.")
     p.add_argument("--seed", type=int, default=2, help="Random seed.")
+    p.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto", help="Training device.")
+    p.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
     args = p.parse_args()
     if args.smoke:
         args.iters = 10
