@@ -5,11 +5,21 @@ This page is the compact map. You can ignore most files at first.
 ## Big Picture
 
 ```text
-tutorial note
+Foundation repository
+  -> notation, ODE models, shared cybercontrol helpers
+Companion Note 2
   -> PINN/PIDL model families
   -> inverse learning, missing mechanisms, neural control
   -> figures and training diagnostics
 ```
+
+## Three-Repository Order
+
+| Step | Repository | What to use it for |
+|---:|---|---|
+| 0 | `network-control-differential-games` | Foundation notation, shared package, continuous/impulse/hybrid worked examples, and degree-level/node-level scalability. |
+| 1 | `note1-cyber-control-games` | PMP/FBSM, sampled-data MDPs, DDQN, CTDE/MADRL, and cyber game-learning diagnostics. |
+| 2 | `note2-pinn-pidl-cyber-control` | This note: PINN/PIDL, inverse learning, neural control, PMP-informed residuals, and sparse-data validation. |
 
 ## Five-Minute Path
 

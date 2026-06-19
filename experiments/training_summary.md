@@ -1,6 +1,6 @@
 # Training Summary
 
-These diagnostics use the `teaching` profile with `600` optimizer iterations per method. This default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
+These diagnostics use the `teaching` profile with `600` optimizer iterations per method. The default profile stays laptop-friendly; the GPU profile increases width/depth and collocation points for a more demanding local run.
 
 ## Profile Parameters
 
