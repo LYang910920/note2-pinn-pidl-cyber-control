@@ -10,7 +10,13 @@ Scripts are grouped by purpose: quick validation, figure generation, and longer 
 
 ## Runtime Notes
 
-`run_smoke_tests.sh` is the fast check used by GitHub Actions.  `run_training_iterations.py` is longer because it is meant to show loss reduction over time.
+`run_smoke_tests.sh` is the fast check used by GitHub Actions. If the virtual environment is not activated, pass the interpreter explicitly:
+
+```bash
+PYTHON=../.venv/bin/python bash scripts/run_smoke_tests.sh
+```
+
+`run_training_iterations.py` is longer because it is meant to show loss reduction over time.
 
 Use `--iters` to change the length of each PINN/PIDL teaching run:
 
