@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from shared_setup import ensure_foundation_package
+from shared_setup import ensure_foundation_package, resolve_torch_device
 
 ensure_foundation_package()
 
@@ -113,7 +113,7 @@ class NodeSIPRSStateNet:
 def train(args):
     """Train the small node-SIPRS inverse PINN and return diagnostics."""
 
-    torch, device, _ = configure_torch(seed=args.seed, device=args.device, threads=1)
+    torch, device, _ = resolve_torch_device(configure_torch, seed=args.seed, device=args.device, threads=1)
     cfg = NodeSIPRSInverseConfig(
         nodes=args.nodes,
         grid=args.grid,

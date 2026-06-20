@@ -22,7 +22,7 @@ from __future__ import annotations
 import argparse
 import torch
 import torch.nn as nn
-from shared_setup import ensure_foundation_package
+from shared_setup import ensure_foundation_package, resolve_torch_device
 
 ensure_foundation_package()
 from cybercontrol.models import sir_rhs_torch as known_rhs
@@ -62,7 +62,8 @@ def train(args):
     The known SIR part remains explicit.  The correction network only explains
     residual behavior that the known mechanism cannot capture.
     """
-    _, device, _ = configure_torch(
+    _, device, _ = resolve_torch_device(
+        configure_torch,
         seed=args.seed,
         device=getattr(args, "device", "auto"),
         threads=getattr(args, "threads", 1),

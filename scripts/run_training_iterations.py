@@ -23,7 +23,7 @@ import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from shared_setup import ensure_foundation_package
+from shared_setup import ensure_foundation_package, resolve_torch_device
 
 ensure_foundation_package()
 from cybercontrol.diagnostics import add_caption, diagnostic_terms_for, write_diagnostic_glossary
@@ -794,7 +794,7 @@ def main() -> None:
     parser.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
     args = parser.parse_args()
     profile = resolve_training_profile(args.profile, args.iters)
-    _, script_device, _ = configure_torch(device=args.device, threads=args.threads)
+    _, script_device, _ = resolve_torch_device(configure_torch, device=args.device, threads=args.threads)
 
     exp_dir = ROOT / "experiments"
     fig_dir = ROOT / "figures"
