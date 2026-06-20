@@ -2,7 +2,7 @@
 
 Executable companion for **Note 2: PINN/PIDL for Cyber Control**. This is the third repository in the tutorial family: it builds on the foundation repository's notation and shared `cybercontrol` package, then focuses on inverse PINNs, PIDL with a missing mechanism, direct neural optimal control, and PMP-informed PINNs.
 
-The main goal is to make the loss design visible: data terms, ODE residuals, boundary conditions, control objectives, and PMP optimality residuals are logged separately.  The examples are compact, but each one produces figures and CSV histories so the training behavior can be inspected rather than guessed.
+The examples make the loss design visible: data terms, ODE residuals, boundary conditions, control objectives, and PMP optimality residuals are logged separately. Each run produces figures and CSV histories so the training behavior can be inspected rather than guessed.
 
 If this is your first visit, start with `START_HERE.md`.
 
@@ -22,8 +22,8 @@ The three repositories are meant to be read in order, but each remains runnable 
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -e ../network-control-differential-games
-pip install -r requirements.txt
+pip install -e "../network-control-differential-games[torch,dev]"
+pip install -e ".[dev]"
 bash scripts/run_smoke_tests.sh
 python scripts/generate_figures.py
 ```
@@ -31,7 +31,8 @@ python scripts/generate_figures.py
 If this repository is cloned by itself, install the shared foundation package from GitHub before running the examples:
 
 ```bash
-pip install "git+https://github.com/LYang910920/network-control-differential-games.git"
+pip install "cybercontrol[torch] @ git+https://github.com/LYang910920/network-control-differential-games.git"
+pip install -e ".[dev]"
 ```
 
 For longer diagnostics and baseline comparisons:

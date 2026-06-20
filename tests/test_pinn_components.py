@@ -1,15 +1,10 @@
 # Copyright (c) 2026 Luxing Yang.
 # Licensed under the MIT License. See LICENSE in the repository root.
 
-from pathlib import Path
-import sys
 import unittest
 
 import numpy as np
 import torch
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
 from control_pinn_malware import ControlNet, StateNet, rhs
 from experiment_profiles import describe_profiles, get_profile
