@@ -18,10 +18,7 @@ import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from shared_setup import ensure_foundation_package
-
-ensure_foundation_package()
-from plotting_compat import (
+from cybercontrol.plotting import (
     add_arrow,
     add_box,
     guide_style,
@@ -142,8 +139,8 @@ def plot_neural_architectures(output_dir: Path) -> None:
 
 
 def main() -> None:
-    output_dir = ROOT / "figures"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = ROOT / "docs" / "assets"
+    output_dir.mkdir(parents=True, exist_ok=True)
     plot_sparse_inverse_data(output_dir)
     plot_pidl_missing_mechanism(output_dir)
     plot_neural_architectures(output_dir)

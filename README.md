@@ -1,139 +1,87 @@
-# PINN and PIDL for Cyber Control: Companion Note 2
+# Physics-Informed Cyber Control
 
-Executable companion for **Note 2: PINN/PIDL for Cyber Control**. This is the third repository in the tutorial family: it builds on the foundation repository's notation and shared `cybercontrol` package, then focuses on inverse PINNs, PIDL with a missing mechanism, direct neural optimal control, and PMP-informed PINNs.
-
-The examples make the loss design visible: data terms, ODE residuals, boundary conditions, control objectives, and PMP optimality residuals are logged separately. Each run produces figures and CSV histories so the training behavior can be inspected rather than guessed.
-
-If this is your first visit, start with `START_HERE.md`.
+Executable tutorial code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the tutorial family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPRS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
 
 ## Repository Family
 
-The three repositories are meant to be read in order, but each remains runnable on its own.
-
 | Order | Repository | Role |
 |---:|---|---|
-| 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | **Foundation.** Notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-level versus node-level FBS scalability, and reference smoke runs. |
-| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | **Companion Note 1.** PMP/FBSM baselines, sampled-data MDP conversion, DDQN defense learning, compact CTDE, and node-SIPRS MAPPO. |
-| 2 | `note2-pinn-pidl-cyber-control` | **This companion note.** PINN/PIDL, inverse learning, neural control, PMP-informed residuals, and sparse-data validation. |
+| 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-vs-node scalability, and reference smoke runs. |
+| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, compact CTDE, and node-SIPRS MAPPO. |
+| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and node-SIPRS inverse-learning smoke examples. |
 
-## Quick Start
+## 5-Minute Quick Start
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
-pip install -e "../network-control-differential-games[torch,dev]"
-pip install -e ".[dev]"
+python -m pip install --upgrade pip
+python -m pip install -e "../network-control-differential-games[torch,dev]"
+python -m pip install -e ".[dev]"
 bash scripts/run_smoke_tests.sh
 python scripts/generate_figures.py
 ```
 
-If this repository is cloned by itself, install the shared foundation package from GitHub before running the examples:
+If this repository is cloned without the sibling foundation repo:
 
 ```bash
-pip install "cybercontrol[torch] @ git+https://github.com/LYang910920/network-control-differential-games.git"
-pip install -e ".[dev]"
+python -m pip install "cybercontrol[torch] @ git+https://github.com/LYang910920/network-control-differential-games.git"
+python -m pip install -e ".[dev]"
 ```
 
-For longer diagnostics and baseline comparisons:
+For bounded diagnostics and baseline comparisons:
 
 ```bash
 python scripts/run_training_iterations.py
 ```
 
-## Repository Guide
+## Code Map
 
-| Need | Open |
+| Need | Start here |
 |---|---|
-| Short orientation | `START_HERE.md` |
-| Tutorial narrative | `docs/note2_pinn_pidl_cyber_control.pdf` |
-| Parameter and hyperparameter reference | `docs/PARAMETERS.md` |
-| Paper-writing workflow | `docs/PAPER_WORKFLOW.md` |
-| Source-code map | `src/README.md` |
-| Student extension profiles | `src/experiment_profiles.py` |
-| Script and output map | `scripts/README.md` |
-| Training curves and CSVs | `experiments/README.md` |
-| Extensions and scaling | `docs/EXTENDING.md` |
-| License and attribution | `LICENSE`, `NOTICE.md` |
-
-## Core Flow
-
-```text
-cyber ODE model
-  -> sparse data and residual losses
-  -> inverse PINN / PIDL
-  -> neural control PINN
-  -> PMP-informed optimality residuals
-  -> small node-SIPRS graph inverse PINN bridge
-```
-
-![Neural architectures](figures/neural_architectures.png)
-
-## What You Learn
-
-| Topic | In this repo |
-|---|---|
-| Inverse PINNs | Learn hidden trajectories and unknown parameters from sparse observations. |
-| PIDL | Keep known cyber dynamics explicit and learn only the missing mechanism. |
-| Neural control | Train state and control networks against objectives and ODE residuals. |
-| PMP-informed PINNs | Use Hamiltonian residuals to connect neural training with optimal-control theory. |
-| Graph/node inverse learning | Use the shared SIPRS simulator to create sparse node observations and held-out graph-state metrics. |
+| Tutorial PDF | `docs/note2_pinn_pidl_cyber_control.pdf` |
+| Run and implementation guide | `docs/code_run_guide.pdf`, `docs/implementation_companion.pdf` |
+| Parameters and neural hyperparameters | `docs/PARAMETERS.md` |
+| Paper workflow and extensions | `docs/PAPER_WORKFLOW.md`, `docs/EXTENDING.md` |
+| Inverse PINN | `src/inverse_pinn_sir_malware.py` |
+| PIDL missing-mechanism example | `src/pidl_unknown_mechanism.py` |
+| Neural control and PMP-informed PINN | `src/control_pinn_malware.py`, `src/pmp_informed_pinn_malware.py` |
+| Node-SIPRS inverse PINN smoke test | `src/node_siprs_inverse_pinn.py` |
+| Static figures and bounded diagnostics | `scripts/generate_figures.py`, `scripts/run_training_iterations.py` |
 
 ## Representative Experiments
 
-The inverse PINN example starts from sparse infected-state observations and learns hidden state curves plus propagation parameters under ODE residual constraints.
+The inverse PINN starts from sparse infected-state observations and learns hidden state curves plus propagation parameters under ODE residual constraints.
 
-![Inverse PINN sparse-data setup](figures/inverse_pinn_sparse_data.png)
+![Inverse PINN sparse-data setup](docs/assets/inverse_pinn_sparse_data.png)
 
-The PIDL example keeps the known SIR mechanism in the model and asks a correction network to recover a synthetic missing nonlinear term.
+The PIDL example keeps the known SIR mechanism explicit and uses a correction network for the synthetic missing nonlinear term.
 
-![PIDL missing nonlinear mechanism](figures/pidl_missing_mechanism.png)
+![PIDL missing nonlinear mechanism](docs/assets/pidl_missing_mechanism.png)
 
-The training diagnostics plot compares the longer tutorial runs for inverse PINN, PIDL, direct-control PINN, and PMP-informed PINN.  The separate loss curves make it easier to see whether the model is fitting data, respecting dynamics, reducing the intended objective, and satisfying PMP-style stationarity.  The generated `experiments/training_diagnostic_glossary.md` defines the plotted terms such as data loss, ODE residual loss, stationarity loss, collocation point, and rollout objective.
+The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy.
 
-![Training iteration diagnostics](figures/training_iteration_diagnostics.png)
+![Baseline comparison for learned methods](docs/assets/baseline_comparison.png)
 
-The baseline comparison plot asks a second question: after training, how do the learned methods compare with simple alternatives?  It uses method-specific baselines: sparse interpolation and a wrong-parameter SIR rollout for inverse PINNs, known-SIR-only dynamics for PIDL, and no/fixed/learned controls for malware mitigation.  A **rollout** means the original ODE or graph simulator is run forward under a parameter set or control policy; it is a validation check, not just another training loss.
+## Extension Route
 
-![Baseline comparison for learned methods](figures/baseline_comparison.png)
-
-## Main Outputs
-
-| Output | Purpose |
-|---|---|
-| `figures/inverse_pinn_sparse_data.png` | sparse-observation inverse-learning setup |
-| `figures/pidl_missing_mechanism.png` | known dynamics plus learned missing mechanism |
-| `figures/training_iteration_diagnostics.png` | longer inverse PINN, PIDL, control PINN, and PMP-informed diagnostics |
-| `figures/baseline_comparison.png` | learned methods compared with method-specific baselines |
-| `experiments/node_siprs_inverse_pinn_smoke.csv` | small node-SIPRS inverse PINN smoke metrics with held-out state error |
-| `experiments/OUTPUT_PREVIEW.md` | categorized first-stop summary after longer experiment runs |
-| `experiments/training_diagnostic_glossary.md` | short definitions for loss, residual, rollout, and validation terms |
-| `experiments/baseline_comparison_metrics.csv` | exact metric values behind the baseline comparison plot |
-| `experiments/*.csv` | logged histories behind the training plot |
+1. Read `docs/PARAMETERS.md` before changing collocation points, width/depth, loss weights, or training length.
+2. Pick one method file and preserve the meaning of its logged loss terms.
+3. Keep common ODE, Torch, graph, plotting, and CSV helpers in `cybercontrol`; add Note 2 code only for PINN/PIDL method logic.
+4. Run `bash scripts/run_smoke_tests.sh` after each structural change.
+5. Use `python scripts/run_training_iterations.py` for bounded diagnostics. Outputs go to ignored `artifacts/experiments/` and `artifacts/figures/`.
 
 ## Validation
 
-`bash scripts/run_smoke_tests.sh` runs the fast local check.  GitHub Actions repeats the smoke tests and regenerates figures on each push or pull request.
-
-These tutorial examples are not calibrated cyber-risk models.  For research use, add noisy-data studies, identifiability checks, multiple seeds, held-out trajectories, and uncertainty estimates.
-
-Before changing losses, collocation points, network width, or training iterations, read `docs/PARAMETERS.md`; it also defines trajectory, rollout, wrong-parameter rollout, baseline, and robustness. To adapt the code to a paper-specific model, start with `python src/experiment_profiles.py`.  It lists each method, the loss terms to preserve, the first functions to edit, and the bridge toward larger network or cyber-control scenarios. For paper structure and baseline planning, read `docs/PAPER_WORKFLOW.md`.
-
-For a heavier local/GPU diagnostic after the smoke tests pass, use:
-
 ```bash
-python scripts/run_training_iterations.py --profile gpu
+python -m compileall -q src tests scripts
+python -m pytest -q
+bash scripts/run_smoke_tests.sh
+python scripts/generate_figures.py
 ```
 
-The reusable numerical/model helpers are imported from the foundation package `cybercontrol`, especially the Torch SIR RHS, node-level SIPRS graph equations, bounded control networks, simplex state networks, positive parameter transforms, autograd time derivatives, RK4 data generation, plotting helpers, and CSV writing.
+GitHub Actions runs the smoke tests on pushes and pull requests. The examples are tutorial baselines and need additional seed, noise, identifiability, and uncertainty studies before paper-level claims.
 
-## Related Tutorial Repositories
+## Citation and License
 
-| Repository | Use it for |
-|---|---|
-| https://github.com/LYang910920/network-control-differential-games | Start here for the foundation notation, shared package, and worked optimal-control/game examples. |
-| https://github.com/LYang910920/note1-cyber-control-games | Continue through PMP/FBSM baselines, ODE-RL, DDQN, compact CTDE, and node-SIPRS MAPPO before this PINN/PIDL branch. |
-
-## License And Copyright
-
-Released under the MIT License.  See `LICENSE` for terms and `NOTICE.md` for copyright, dependency, and attribution notes.
+See `LICENSE` and `NOTICE.md`. When using the repository in a paper or report, cite the related publication and the foundation repository when its shared package is used.

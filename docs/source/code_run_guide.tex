@@ -16,7 +16,7 @@ The repository is organized around four teaching experiments:
 .
   requirements.txt
   README.md
-  START_HERE.md
+  README.md
   scripts/
     run_smoke_tests.sh
     generate_figures.py
@@ -26,7 +26,7 @@ The repository is organized around four teaching experiments:
     pidl_unknown_mechanism.py
     control_pinn_malware.py
     pmp_informed_pinn_malware.py
-  experiments/
+  artifacts/experiments/
     OUTPUT_PREVIEW.md
     training_summary.md
     baseline_comparison_metrics.csv
@@ -34,7 +34,7 @@ The repository is organized around four teaching experiments:
     pidl_training_history.csv
     control_pinn_training_history.csv
     pmp_informed_pinn_training_history.csv
-  figures/
+  docs/assets/
     inverse_pinn_sparse_data.png
     pidl_missing_mechanism.png
     neural_architectures.png
@@ -64,7 +64,7 @@ A smoke test checks syntax and basic data flow. It does not train high-accuracy 
 \begin{lstlisting}[style=pythonstyle]
 python scripts/generate_figures.py
 \end{lstlisting}
-Expected output: refreshed PNG figures under \texttt{figures/}, including sparse-data setup, PIDL missing-mechanism, and neural-architecture diagrams.
+Expected output: refreshed PNG figures under \texttt{docs/assets/}, including sparse-data setup, PIDL missing-mechanism, and neural-architecture diagrams.
 
 \subsection{Inverse PINN}
 \begin{lstlisting}[style=pythonstyle]
@@ -96,10 +96,10 @@ python scripts/run_training_iterations.py --iters 600
 \end{lstlisting}
 Expected output:
 \begin{itemize}
-\item CSV histories under \texttt{experiments/};
-\item baseline metrics in \texttt{experiments/baseline\_comparison\_metrics.csv};
+\item CSV histories under \texttt{artifacts/experiments/};
+\item baseline metrics in \texttt{artifacts/experiments/baseline\_comparison\_metrics.csv};
 \item \texttt{OUTPUT\_PREVIEW.md} and \texttt{training\_summary.md};
-\item \texttt{figures/training\_iteration\_diagnostics.png} and \texttt{figures/baseline\_comparison.png}.
+\item \texttt{artifacts/figures/training\_iteration\_diagnostics.png} and \texttt{artifacts/figures/baseline\_comparison.png}.
 \end{itemize}
 
 \section{How to Interpret Outputs}
@@ -118,7 +118,7 @@ Boundary loss & Whether the state initial condition and costate terminal conditi
 \end{longtable}
 
 \section{Output Map}
-Start with \texttt{experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, baseline-comparison panel, and file. Then inspect \texttt{figures/training\_iteration\_diagnostics.png}, \texttt{figures/baseline\_comparison.png}, and the CSV file for the experiment you are studying.
+Start with \texttt{artifacts/experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, baseline-comparison panel, and file. Then inspect \texttt{artifacts/figures/training\_iteration\_diagnostics.png}, \texttt{artifacts/figures/baseline\_comparison.png}, and the CSV file for the experiment you are studying.
 
 \begin{longtable}{p{0.28\textwidth}p{0.62\textwidth}}
 \toprule

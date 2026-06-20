@@ -22,16 +22,15 @@ from __future__ import annotations
 import argparse
 import torch
 import torch.nn as nn
-from shared_setup import ensure_foundation_package, resolve_torch_device
 
-ensure_foundation_package()
 from cybercontrol.models import sir_rhs_torch as known_rhs
 from cybercontrol.torch_utils import MLP, SimplexStateNet, configure_torch, positive, rk4_step_torch
 
 
 def true_rhs(x, beta, gamma, q):
-    S, I, R = x[..., 0], x[..., 1], x[..., 2]
-    corr = q*S*I*I
+    susceptible = x[..., 0]
+    infected = x[..., 1]
+    corr = q * susceptible * infected * infected
     return known_rhs(x, beta, gamma) + torch.stack([-corr, corr, torch.zeros_like(corr)], dim=-1)
 
 
@@ -39,9 +38,16 @@ def generate(T=20.0, n=400, beta=0.8, gamma=0.2, q=1.2):
     """Generate data from a known SIR model plus a hidden nonlinear correction."""
     t = torch.linspace(0, T, n).view(-1, 1)
     dt = T/(n-1)
-    x = torch.zeros(n, 3); x[0] = torch.tensor([0.95, 0.05, 0.0])
+    x = torch.zeros(n, 3)
+    x[0] = torch.tensor([0.95, 0.05, 0.0])
+    beta_t = torch.tensor(beta)
+    gamma_t = torch.tensor(gamma)
+    q_t = torch.tensor(q)
+
+    def rhs(state):
+        return true_rhs(state, beta_t, gamma_t, q_t)
+
     for k in range(n-1):
-        rhs = lambda y: true_rhs(y, torch.tensor(beta), torch.tensor(gamma), torch.tensor(q))
         x[k+1] = rk4_step_torch(x[k], dt, rhs, project_simplex=True)
     return t, x
 
@@ -62,8 +68,7 @@ def train(args):
     The known SIR part remains explicit.  The correction network only explains
     residual behavior that the known mechanism cannot capture.
     """
-    _, device, _ = resolve_torch_device(
-        configure_torch,
+    _, device, _ = configure_torch(
         seed=args.seed,
         device=getattr(args, "device", "auto"),
         threads=getattr(args, "threads", 1),
@@ -77,9 +82,11 @@ def train(args):
     corr_net = CorrectionNet(args.width, depth=depth).to(device)
     beta_raw = nn.Parameter(torch.tensor(0.0, device=device))
     gamma_raw = nn.Parameter(torch.tensor(-1.0, device=device))
-    opt = torch.optim.Adam(list(state_net.parameters()) + list(corr_net.parameters()) + [beta_raw, gamma_raw], lr=args.lr)
-    t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1,1).to(device); t_f.requires_grad_(True)
-    x0 = torch.tensor([[0.95,0.05,0.0]], device=device)
+    trainable = list(state_net.parameters()) + list(corr_net.parameters()) + [beta_raw, gamma_raw]
+    opt = torch.optim.Adam(trainable, lr=args.lr)
+    t_f = torch.linspace(0, 20.0, args.n_collocation).view(-1, 1).to(device)
+    t_f.requires_grad_(True)
+    x0 = torch.tensor([[0.95, 0.05, 0.0]], device=device)
     B = torch.tensor([[-1.0, 1.0, 0.0]], device=device)
     history = []
 
@@ -97,7 +104,8 @@ def train(args):
         # Mild regularization discourages unneeded correction if known model suffices.
         loss_corr = torch.mean(g**2)
         loss = loss_data + args.w_ic*loss_ic + args.w_res*loss_res + args.w_corr*loss_corr
-        loss.backward(); opt.step()
+        loss.backward()
+        opt.step()
         if it % args.log_every == 0:
             row = {
                 "iteration": it,

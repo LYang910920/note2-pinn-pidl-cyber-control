@@ -23,12 +23,9 @@ import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from shared_setup import ensure_foundation_package, resolve_torch_device
-
-ensure_foundation_package()
 from cybercontrol.diagnostics import add_caption, diagnostic_terms_for, write_diagnostic_glossary
 from cybercontrol.io import write_csv
-from plotting_compat import panel_label, publication_style, save_publication_figure, style_axis
+from cybercontrol.plotting import panel_label, publication_style, save_publication_figure, style_axis
 from cybercontrol.torch_utils import configure_torch, rk4_step_torch
 from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
 from inverse_pinn_sir_malware import generate_data as generate_inverse_data, train as train_inverse_pinn
@@ -357,8 +354,11 @@ def roll_known_pidl_baseline(T: float = 20.0, n_grid: int = 400, beta: float = 0
     x[0] = torch.tensor([0.95, 0.05, 0.0])
     beta_t = torch.tensor(beta)
     gamma_t = torch.tensor(gamma)
+
+    def rhs(state):
+        return pidl_known_rhs(state, beta_t, gamma_t)
+
     for k in range(n_grid - 1):
-        rhs = lambda y: pidl_known_rhs(y, beta_t, gamma_t)
         x[k + 1] = rk4_step_torch(x[k], dt, rhs, project_simplex=True)
     return to_numpy(x)
 
@@ -403,8 +403,16 @@ def evaluate_pidl_baselines(state_net, corr_net, device: str) -> list[dict]:
 
 def controlled_rhs_np(x: np.ndarray, u: float, beta: float, gamma: float) -> np.ndarray:
     """Controlled SIR malware dynamics for independent rollout evaluation."""
-    S, I, R = x
-    return np.array([-beta * S * I - u * S, beta * S * I - gamma * I, gamma * I + u * S], dtype=float)
+    susceptible = x[0]
+    infected = x[1]
+    return np.array(
+        [
+            -beta * susceptible * infected - u * susceptible,
+            beta * susceptible * infected - gamma * infected,
+            gamma * infected + u * susceptible,
+        ],
+        dtype=float,
+    )
 
 
 def get_control_value(control_source, t: float) -> float:
@@ -434,11 +442,11 @@ def rollout_control_objective(control_source, args: SimpleNamespace, n_grid: int
 
     for k in range(n_grid - 1):
         u[k] = np.clip(get_control_value(control_source, float(t[k])), 0.0, args.umax)
-        f = lambda y: controlled_rhs_np(y, u[k], args.beta, args.gamma)
-        k1 = f(x[k])
-        k2 = f(x[k] + 0.5 * dt * k1)
-        k3 = f(x[k] + 0.5 * dt * k2)
-        k4 = f(x[k] + dt * k3)
+        control_value = u[k]
+        k1 = controlled_rhs_np(x[k], control_value, args.beta, args.gamma)
+        k2 = controlled_rhs_np(x[k] + 0.5 * dt * k1, control_value, args.beta, args.gamma)
+        k3 = controlled_rhs_np(x[k] + 0.5 * dt * k2, control_value, args.beta, args.gamma)
+        k4 = controlled_rhs_np(x[k] + dt * k3, control_value, args.beta, args.gamma)
         y = x[k] + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
         y = np.clip(y, 0.0, 1.0)
         x[k + 1] = y / max(y.sum(), 1e-12)
@@ -477,11 +485,10 @@ def train_rollout_optimized_control(args: SimpleNamespace, device: str, iters: i
             running_terms.append(args.A * x[:, 1:2] + 0.5 * args.B * u * u)
             if k == n_steps - 1:
                 break
-            f = lambda y: control_rhs(y, u, args.beta, args.gamma)
-            k1 = f(x)
-            k2 = f(x + 0.5 * dt * k1)
-            k3 = f(x + 0.5 * dt * k2)
-            k4 = f(x + dt * k3)
+            k1 = control_rhs(x, u, args.beta, args.gamma)
+            k2 = control_rhs(x + 0.5 * dt * k1, u, args.beta, args.gamma)
+            k3 = control_rhs(x + 0.5 * dt * k2, u, args.beta, args.gamma)
+            k4 = control_rhs(x + dt * k3, u, args.beta, args.gamma)
             x = x + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
             x = torch.clamp(x, 0.0, 1.0)
             x = x / torch.clamp(x.sum(dim=1, keepdim=True), min=1e-12)
@@ -672,7 +679,7 @@ These diagnostics use the `{profile["name"]}` profile with `{profile["iters"]}` 
 
 ## Training Diagnostic Terms
 
-Open `experiments/training_diagnostic_glossary.md` before reading the training plots.  In this repo, **iteration** means an optimizer step, **collocation point** means a residual-evaluation point, **residual loss** checks equation consistency, and **rollout objective** means the original ODE is simulated forward for validation.
+Open `artifacts/experiments/training_diagnostic_glossary.md` before reading the training plots.  In this repo, **iteration** means an optimizer step, **collocation point** means a residual-evaluation point, **residual loss** checks equation consistency, and **rollout objective** means the original ODE is simulated forward for validation.
 
 ## Profile Parameters
 
@@ -706,7 +713,7 @@ Here **rollout** means the original ODE simulator is run forward under a paramet
 | PIDL missing mechanism | {best_pidl["method"]} | {best_pidl["primary_metric"]} | {numeric(best_pidl, "primary_value"):.3e} |
 | Controlled malware mitigation | {control_best["method"]} | rollout objective | {numeric(control_best, "objective"):.3e} |
 
-Open `figures/baseline_comparison.png` for the visual comparison and `experiments/baseline_comparison_metrics.csv` for the exact numbers.
+Open `artifacts/figures/baseline_comparison.png` for the visual comparison and `artifacts/experiments/baseline_comparison_metrics.csv` for the exact numbers.
 """
     path.write_text(text)
 
@@ -736,7 +743,7 @@ Profile used: `{profile["name"]}` with `{profile["iters"]}` optimizer iterations
 
 ## 2. Training Diagnostic Panels
 
-Open `figures/training_iteration_diagnostics.png`.
+Open `artifacts/figures/training_iteration_diagnostics.png`.
 
 | Panel | What to check |
 |---|---|
@@ -747,7 +754,7 @@ Open `figures/training_iteration_diagnostics.png`.
 
 ## 3. Baseline Comparison Panels
 
-Open `figures/baseline_comparison.png`.
+Open `artifacts/figures/baseline_comparison.png`.
 
 | Panel | What is being compared | Main metric |
 |---|---|---|
@@ -773,15 +780,15 @@ The direct-control and PMP-informed PINN panels above are training diagnostics. 
 
 | Category | File |
 |---|---|
-| Summary | `experiments/training_summary.md` |
-| Diagnostic glossary | `experiments/training_diagnostic_glossary.md` |
-| Learning curves | `figures/training_iteration_diagnostics.png` |
-| Baseline comparison | `figures/baseline_comparison.png` |
-| Baseline metrics | `experiments/baseline_comparison_metrics.csv` |
-| Inverse PINN CSV | `experiments/inverse_pinn_training_history.csv` |
-| PIDL CSV | `experiments/pidl_training_history.csv` |
-| Direct control CSV | `experiments/control_pinn_training_history.csv` |
-| PMP-informed CSV | `experiments/pmp_informed_pinn_training_history.csv` |
+| Summary | `artifacts/experiments/training_summary.md` |
+| Diagnostic glossary | `artifacts/experiments/training_diagnostic_glossary.md` |
+| Learning curves | `artifacts/figures/training_iteration_diagnostics.png` |
+| Baseline comparison | `artifacts/figures/baseline_comparison.png` |
+| Baseline metrics | `artifacts/experiments/baseline_comparison_metrics.csv` |
+| Inverse PINN CSV | `artifacts/experiments/inverse_pinn_training_history.csv` |
+| PIDL CSV | `artifacts/experiments/pidl_training_history.csv` |
+| Direct control CSV | `artifacts/experiments/control_pinn_training_history.csv` |
+| PMP-informed CSV | `artifacts/experiments/pmp_informed_pinn_training_history.csv` |
 """
     path.write_text(text)
 
@@ -794,10 +801,10 @@ def main() -> None:
     parser.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
     args = parser.parse_args()
     profile = resolve_training_profile(args.profile, args.iters)
-    _, script_device, _ = resolve_torch_device(configure_torch, device=args.device, threads=args.threads)
+    _, script_device, _ = configure_torch(device=args.device, threads=args.threads)
 
-    exp_dir = ROOT / "experiments"
-    fig_dir = ROOT / "figures"
+    exp_dir = ROOT / "artifacts" / "experiments"
+    fig_dir = ROOT / "artifacts" / "figures"
 
     inv_args = inverse_args(profile)
     pidl_cfg = pidl_args(profile)
