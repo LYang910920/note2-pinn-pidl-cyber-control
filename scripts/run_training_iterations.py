@@ -28,7 +28,7 @@ from shared_setup import ensure_foundation_package, resolve_torch_device
 ensure_foundation_package()
 from cybercontrol.diagnostics import add_caption, diagnostic_terms_for, write_diagnostic_glossary
 from cybercontrol.io import write_csv
-from cybercontrol.plotting import panel_label, publication_style, save_publication_figure, style_axis
+from plotting_compat import panel_label, publication_style, save_publication_figure, style_axis
 from cybercontrol.torch_utils import configure_torch, rk4_step_torch
 from control_pinn_malware import ControlNet, rhs as control_rhs, train as train_control_pinn
 from inverse_pinn_sir_malware import generate_data as generate_inverse_data, train as train_inverse_pinn

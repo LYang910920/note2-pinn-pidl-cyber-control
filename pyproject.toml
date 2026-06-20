@@ -29,6 +29,7 @@ py-modules = [
     "inverse_pinn_sir_malware",
     "node_siprs_inverse_pinn",
     "pidl_unknown_mechanism",
+    "plotting_compat",
     "pmp_informed_pinn_malware",
     "shared_setup",
 ]
