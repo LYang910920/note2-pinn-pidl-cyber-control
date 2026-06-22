@@ -80,6 +80,14 @@ bash scripts/run_smoke_tests.sh
 python scripts/generate_figures.py
 ```
 
+Extended local diagnostic run:
+
+```bash
+python scripts/run_training_iterations.py --profile teaching --iters 800 --device cpu --threads 1
+```
+
+In this run, inverse PINN, PIDL, direct-control PINN, and PMP-informed diagnostics all reduced their tracked losses. The baseline comparison selected the inverse PINN for sparse-data state recovery, PIDL for the missing-mechanism case, and rollout-optimized neural control for the control objective.
+
 GitHub Actions runs the smoke tests on pushes and pull requests. The examples are tutorial baselines and need additional seed, noise, identifiability, and uncertainty studies before paper-level claims.
 
 ## Citation and License

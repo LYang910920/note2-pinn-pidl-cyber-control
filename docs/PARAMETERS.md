@@ -58,6 +58,7 @@ These are the values used by `python scripts/run_training_iterations.py`.
 | PIDL missing mechanism | `iters=600`, `width=24`, `n_data=18`, `n_collocation=70`, `lr=1e-3`, `seed=22` | `w_ic=10.0`, `w_res=1.0`, `w_corr=1e-3` |
 | Direct control PINN | `iters=600`, `width=24`, `n_collocation=70`, `lr=1e-3`, `seed=23` | `A=10.0`, `B=1.0`, `AT=10.0`, `w_res=10.0`, `w_ic=10.0` |
 | PMP-informed PINN | `iters=600`, `width=24`, `n_collocation=70`, `lr=1e-3`, `seed=24` | `A=10.0`, `B=1.0`, `AT=10.0`, `w_state=10.0`, `w_costate=1.0`, `w_stat=1.0`, `w_bc=10.0` |
+| Extended local diagnostic run | `iters=800`, `device=cpu`, `threads=1`; all four method diagnostics reduced their tracked losses and wrote comparison artifacts under ignored `artifacts/` | `python scripts/run_training_iterations.py --profile teaching --iters 800 --device cpu --threads 1` |
 
 ## Node-SIPRS Inverse PINN Parameters
 
