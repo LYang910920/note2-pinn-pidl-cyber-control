@@ -90,7 +90,10 @@ class PinnComponentTests(unittest.TestCase):
         self.assertEqual(cfg["nodes"], 5)
         self.assertGreaterEqual(len(history), 1)
         self.assertIn("heldout_state_mse", history[-1])
+        self.assertIn("heldout_node_state_mse", history[-1])
+        self.assertIn("homogeneous_misspec_state_mse", history[-1])
         self.assertIn("susceptibility_rmse", history[-1])
+        self.assertGreater(history[-1]["homogeneous_misspec_state_mse"], 0.0)
         self.assertLess(history[-1]["mass_error"], 1e-6)
 
     def test_experiment_profiles_are_readable_extension_entries(self):

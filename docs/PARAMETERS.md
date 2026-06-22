@@ -75,7 +75,7 @@ This smoke route is a graph/node bridge. It uses the Foundation SIPRS simulator 
 | learned rates | positive community-specific susceptibility, infectivity, and recovery; base beta is fixed in this small identifiable example |
 | training defaults | `iters=500`, `width=32`, `depth=2`, `collocation=32`, `lr=1e-3`, parameter regularization `1e-3` |
 | smoke profile | `nodes=6`, `grid=25`, `observed_nodes=3`, `observed_times=8`, `collocation=12`, `iters=12` |
-| main validation metric | `heldout_state_mse` on unobserved time points plus susceptibility/infectivity/gamma RMSE and `mass_error` |
+| main validation metric | `heldout_state_mse` on unobserved time points, `heldout_node_state_mse` on nodes not used in the infected-data loss, homogeneous-misspecification state MSE, susceptibility/infectivity/gamma RMSE, and `mass_error` |
 
 ## GPU-Oriented Diagnostic Profile
 

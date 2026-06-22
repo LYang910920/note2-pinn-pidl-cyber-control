@@ -37,7 +37,7 @@ PMP-informed PINNs, and a small node-level SIPRS graph inverse-learning bridge.
 | State fit | True vs learned `S`, `I`, `R` where synthetic ground truth is available. |
 | Parameter/error table | Parameter L1 error, state MSE, infected-state MSE, and residual error. |
 | Control comparison | No control, fixed controls, direct PINN control, PMP-informed PINN, and random controls. |
-| Graph inverse-learning table | observed-node/time sparsity, held-out state MSE, community susceptibility/infectivity/gamma RMSE, residual error, mass error. |
+| Graph inverse-learning table | observed-node/time sparsity, held-out state MSE, held-out-node state MSE, homogeneous-misspecification rollout MSE, community susceptibility/infectivity/gamma RMSE, residual error, mass error. |
 | Ablation | Remove data, residual, boundary, known-physics, or PMP terms one at a time. |
 
 ## Claim Discipline

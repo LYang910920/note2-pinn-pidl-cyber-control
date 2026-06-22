@@ -113,6 +113,30 @@ def generate_truth(cfg: NodeSIPRSInverseConfig):
     return t, np.asarray(path), A, community, params
 
 
+def rollout_known_params(cfg: NodeSIPRSInverseConfig, A: np.ndarray, x0: np.ndarray, params: NodeSIPRSParams) -> np.ndarray:
+    """Roll out a specified SIPRS parameterization on the tutorial grid."""
+
+    t = np.linspace(0.0, cfg.horizon, cfg.grid)
+
+    def rhs_flat(y, tau):
+        x = y.reshape(cfg.nodes, 4)
+        return node_siprs_rhs_numpy(x, A, params, patch=cfg.patch, clean=cfg.clean).reshape(-1)
+
+    y = project_compartments(x0).reshape(-1)
+    path = [y.reshape(cfg.nodes, 4).copy()]
+    for k in range(cfg.grid - 1):
+        y, _ = rk4_integrate(
+            rhs_flat,
+            y,
+            t0=float(t[k]),
+            dt=float(t[k + 1] - t[k]),
+            substeps=2,
+            project=lambda z: project_compartments(z.reshape(cfg.nodes, 4)).reshape(-1),
+        )
+        path.append(y.reshape(cfg.nodes, 4).copy())
+    return np.asarray(path)
+
+
 class NodeSIPRSStateNet:
     """Time-to-node-compartment network using a shared MLP block."""
 
@@ -146,8 +170,16 @@ def train(args):
     t_np, x_np, A_np, community_np, truth_params = generate_truth(cfg)
     rng = np.random.default_rng(cfg.seed)
     node_idx = np.sort(rng.choice(cfg.nodes, size=min(cfg.observed_nodes, cfg.nodes), replace=False))
+    heldout_nodes = np.setdiff1d(np.arange(cfg.nodes), node_idx)
     data_idx = np.linspace(0, cfg.grid - 1, cfg.observed_times, dtype=int)
     heldout_idx = np.setdiff1d(np.arange(cfg.grid), data_idx)[:: max(1, cfg.grid // 12)]
+    homogeneous_path = rollout_known_params(
+        cfg,
+        A_np,
+        x_np[0],
+        NodeSIPRSParams(beta=cfg.beta_true, gamma=cfg.gamma_true, omega_p=cfg.omega_p, omega_r=cfg.omega_r),
+    )
+    homogeneous_misspec_state_mse = float(np.mean((homogeneous_path - x_np) ** 2))
     observed_I = x_np[np.ix_(data_idx, node_idx, [1])].squeeze(-1)
     if cfg.noise > 0:
         observed_I = np.clip(observed_I + rng.normal(0.0, cfg.noise, observed_I.shape), 0.0, 1.0)
@@ -214,12 +246,15 @@ def train(args):
                 held_pred = model(held_t).cpu().numpy()
                 held_true = x_np[heldout_idx]
                 held_mse = float(np.mean((held_pred - held_true) ** 2))
+                heldout_node_mse = float(np.mean((held_pred[:, heldout_nodes] - held_true[:, heldout_nodes]) ** 2)) if len(heldout_nodes) else float("nan")
                 row = {
                     "iteration": it,
                     "loss": float(loss.detach().cpu()),
                     "data_loss": float(loss_data.detach().cpu()),
                     "residual_loss": float(loss_residual.detach().cpu()),
                     "heldout_state_mse": held_mse,
+                    "heldout_node_state_mse": heldout_node_mse,
+                    "homogeneous_misspec_state_mse": homogeneous_misspec_state_mse,
                     "rate_model": "community-specific susceptibility/infectivity/gamma",
                     "beta_fixed": float(cfg.beta_true),
                     "susceptibility_rmse": float(np.sqrt(np.mean((susceptibility_c.detach().cpu().numpy() - truth_sus) ** 2))),
@@ -258,7 +293,7 @@ def build_parser():
     parser.add_argument("--w-residual", type=float, default=1.0)
     parser.add_argument("--w-mass", type=float, default=1.0)
     parser.add_argument("--w-param-reg", type=float, default=1e-3)
-    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto")
     parser.add_argument("--seed", type=int, default=31)
     parser.add_argument("--heterogeneity-strength", type=float, default=0.35)
     parser.add_argument("--log-every", type=int, default=100)

@@ -59,7 +59,7 @@ The PIDL example keeps the known SIR mechanism explicit and uses a correction ne
 
 ![PIDL missing nonlinear mechanism](docs/assets/pidl_missing_mechanism.png)
 
-The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy. The graph inverse PINN smoke test uses heterogeneous community-specific susceptibility, infectivity, and recovery rather than fitting one global beta/gamma to heterogeneous truth.
+The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy. The graph inverse PINN smoke test uses heterogeneous community-specific susceptibility, infectivity, and recovery rather than fitting one global beta/gamma to heterogeneous truth; it also logs a homogeneous-misspecification rollout and held-out-node state error.
 
 ![Baseline comparison for learned methods](docs/assets/baseline_comparison.png)
 
