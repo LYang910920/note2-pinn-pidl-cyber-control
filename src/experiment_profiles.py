@@ -3,10 +3,9 @@
 
 """Named experiment profiles for adapting Note 2 code.
 
-The four tutorial scripts are small, but students still need a
-clear map from method to model ingredients.  This module provides that map in
-code form so it can be printed, tested, copied, or imported by longer paper
-experiments.
+The profiles map each method to its model ingredients, losses, editable
+functions, and longer-run settings so experiments can be printed, tested,
+copied, or imported by paper-level scripts.
 """
 from __future__ import annotations
 

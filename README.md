@@ -1,14 +1,14 @@
 # Physics-Informed Cyber Control
 
-Executable tutorial code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the tutorial family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPRS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
+Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPRS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
 
 ## Repository Family
 
 | Order | Repository | Role |
 |---:|---|---|
 | 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-vs-node scalability, and reference smoke runs. |
-| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, compact CTDE, and node-SIPRS MAPPO. |
-| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and node-SIPRS inverse-learning smoke examples. |
+| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, and cooperative node-SIPRS MAPPO. |
+| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPRS inverse learning. |
 
 ## 5-Minute Quick Start
 
@@ -18,8 +18,8 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e "../network-control-differential-games[torch,dev]"
 python -m pip install -e ".[dev]"
-bash scripts/run_smoke_tests.sh
-python scripts/generate_figures.py
+python run_all.py smoke
+python run_all.py figures
 ```
 
 If this repository is cloned without the sibling foundation repo:
@@ -32,7 +32,7 @@ python -m pip install -e ".[dev]"
 For bounded diagnostics and baseline comparisons:
 
 ```bash
-python scripts/run_training_iterations.py
+python run_all.py train
 ```
 
 ## Code Map
@@ -46,8 +46,17 @@ python scripts/run_training_iterations.py
 | Inverse PINN | `src/inverse_pinn_sir_malware.py` |
 | PIDL missing-mechanism example | `src/pidl_unknown_mechanism.py` |
 | Neural control and PMP-informed PINN | `src/control_pinn_malware.py`, `src/pmp_informed_pinn_malware.py` |
-| Heterogeneous node-SIPRS inverse PINN smoke test | `src/node_siprs_inverse_pinn.py` |
+| Heterogeneous node-SIPRS inverse PINN | `src/node_siprs_inverse_pinn.py` |
 | Static figures and bounded diagnostics | `scripts/generate_figures.py`, `scripts/run_training_iterations.py` |
+
+## Capability Status
+
+| Capability | API / file | Command | Metrics | Validation status |
+|---|---|---|---|---|
+| Heterogeneous node-SIPRS inverse PINN | `src/node_siprs_inverse_pinn.py` | `python run_all.py node-inverse --output-csv artifacts/extended_validation/node_inverse.csv` | loss, residual loss, held-out state MSE, held-out-node MSE, mass error | community-specific susceptibility, infectivity, and gamma |
+| Sparse/noisy observations | `NodeSIPRSInverseConfig` | add `--noise`, `--observed-nodes`, `--observed-times` | data loss, held-out-time/node errors | observes infected probability for selected nodes/times |
+| Homogeneous misspecification comparison | `rollout_known_params` | same command | homogeneous-misspecification state MSE | compares heterogeneous truth against global-rate rollout |
+| Identifiability limits | `docs/EXTENDING.md`, `docs/PARAMETERS.md` | documentation | rate RMSE and residual checks | claims remain limited to the configured graph/profile |
 
 ## Representative Experiments
 
@@ -59,7 +68,7 @@ The PIDL example keeps the known SIR mechanism explicit and uses a correction ne
 
 ![PIDL missing nonlinear mechanism](docs/assets/pidl_missing_mechanism.png)
 
-The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy. The graph inverse PINN smoke test uses heterogeneous community-specific susceptibility, infectivity, and recovery rather than fitting one global beta/gamma to heterogeneous truth; it also logs a homogeneous-misspecification rollout and held-out-node state error.
+The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy. The graph inverse PINN uses heterogeneous community-specific susceptibility, infectivity, and recovery rather than fitting one global beta/gamma to heterogeneous truth; it also logs a homogeneous-misspecification rollout and held-out-node state error.
 
 ![Baseline comparison for learned methods](docs/assets/baseline_comparison.png)
 
@@ -68,27 +77,27 @@ The baseline comparison evaluates learned methods against method-specific altern
 1. Read `docs/PARAMETERS.md` before changing collocation points, width/depth, loss weights, or training length.
 2. Pick one method file and preserve the meaning of its logged loss terms.
 3. Keep common ODE, Torch, graph, plotting, and CSV helpers in `cybercontrol`; add Note 2 code only for PINN/PIDL method logic.
-4. Run `bash scripts/run_smoke_tests.sh` after each structural change.
-5. Use `python scripts/run_training_iterations.py` for bounded diagnostics. Outputs go to ignored `artifacts/experiments/` and `artifacts/figures/`.
+4. Run `python run_all.py smoke` after each structural change.
+5. Use `python run_all.py train` for bounded diagnostics. Outputs go to ignored `artifacts/experiments/` and `artifacts/figures/`.
 
 ## Validation
 
 ```bash
 python -m compileall -q src tests scripts
 python -m pytest -q
-bash scripts/run_smoke_tests.sh
-python scripts/generate_figures.py
+python run_all.py smoke
+python run_all.py figures
 ```
 
 Extended local diagnostic run:
 
 ```bash
-python scripts/run_training_iterations.py --profile teaching --iters 800 --device cpu --threads 1
+python run_all.py train --profile teaching --iters 800 --device cpu --threads 1
 ```
 
 In this run, inverse PINN, PIDL, direct-control PINN, and PMP-informed diagnostics all reduced their tracked losses. The baseline comparison selected the inverse PINN for sparse-data state recovery, PIDL for the missing-mechanism case, and rollout-optimized neural control for the control objective.
 
-GitHub Actions runs the smoke tests on pushes and pull requests. The examples are tutorial baselines and need additional seed, noise, identifiability, and uncertainty studies before paper-level claims.
+GitHub Actions runs the smoke tests on pushes and pull requests. The examples are teaching baselines and need additional seed, noise, identifiability, and uncertainty studies before paper-level claims.
 
 ## Citation and License
 
