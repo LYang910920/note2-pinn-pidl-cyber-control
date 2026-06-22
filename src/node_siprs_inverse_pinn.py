@@ -24,6 +24,7 @@ import numpy as np
 from cybercontrol.network_models import (
     NodeSIPRSParams,
     community_correlated_node_siprs_params,
+    contiguous_community_index,
     node_siprs_rhs_numpy,
     node_siprs_rhs_torch,
     normalize_adjacency,
@@ -65,18 +66,12 @@ def toy_adjacency(nodes: int) -> np.ndarray:
     return normalize_adjacency(A)
 
 
-def community_index(nodes: int, communities: int) -> np.ndarray:
-    """Assign nodes to contiguous communities for identifiable small-rate maps."""
-
-    return np.minimum(np.arange(nodes) * communities // nodes, communities - 1)
-
-
 def generate_truth(cfg: NodeSIPRSInverseConfig):
     """Generate heterogeneous node-SIPRS truth with fixed patch/clean controls."""
 
     rng = np.random.default_rng(cfg.seed)
     A = toy_adjacency(cfg.nodes)
-    community = community_index(cfg.nodes, cfg.communities)
+    community = contiguous_community_index(cfg.nodes, cfg.communities)
     x0 = np.zeros((cfg.nodes, 4), dtype=np.float64)
     x0[:, 0] = 1.0 - 0.04
     x0[:, 1] = 0.04
