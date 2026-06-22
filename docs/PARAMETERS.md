@@ -34,6 +34,7 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | `ODE residual loss` | Error between the neural derivative and the ODE right-hand side at collocation points. |
 | `stationarity loss` | Hamiltonian first-order residual used in the PMP-informed example. It supports PMP consistency but does not by itself prove global optimality. |
 | `correction regularizer` | PIDL penalty that keeps the learned missing-mechanism term controlled instead of letting it replace the known dynamics. |
+| `community-specific rate map` | A low-dimensional heterogeneous parameterization: nodes in the same community share learned positive susceptibility, infectivity, and recovery values. It is more identifiable than learning one free rate per sparsely observed node. |
 
 ## Shared Model Parameters
 
@@ -67,12 +68,14 @@ This smoke route is a graph/node bridge. It uses the Foundation SIPRS simulator 
 | graph nodes | `8` |
 | compartments | `[S,I,P,R]` |
 | time horizon/grid | `T=6.0`, `grid=61` |
-| true rates | `beta=0.82`, `gamma=0.18`, `omega_p=0.03`, `omega_r=0.02` |
+| true rates | base `beta=0.82`, base `gamma=0.18`, `omega_p=0.03`, `omega_r=0.02`; susceptibility, infectivity, recovery, criticality and costs are community-correlated |
+| communities / heterogeneity | `2` communities, heterogeneity strength `0.35` |
 | known controls | `patch=0.08`, `clean=0.04` |
 | sparse observations | `4` observed nodes, `14` observed time points, infected compartment only |
-| training defaults | `iters=500`, `width=32`, `depth=2`, `collocation=32`, `lr=1e-3` |
+| learned rates | positive community-specific susceptibility, infectivity, and recovery; base beta is fixed in this small identifiable example |
+| training defaults | `iters=500`, `width=32`, `depth=2`, `collocation=32`, `lr=1e-3`, parameter regularization `1e-3` |
 | smoke profile | `nodes=6`, `grid=25`, `observed_nodes=3`, `observed_times=8`, `collocation=12`, `iters=12` |
-| main validation metric | `heldout_state_mse` on unobserved time points plus `beta_abs_error`, `gamma_abs_error`, and `mass_error` |
+| main validation metric | `heldout_state_mse` on unobserved time points plus susceptibility/infectivity/gamma RMSE and `mass_error` |
 
 ## GPU-Oriented Diagnostic Profile
 
@@ -99,7 +102,7 @@ These are the standalone script defaults if you run each file directly without `
 | `src/pidl_unknown_mechanism.py` | `iters=5000`, `width=64`, `n_data=40`, `n_collocation=200`, `lr=1e-3`, `w_ic=10.0`, `w_res=1.0`, `w_corr=1e-3` |
 | `src/control_pinn_malware.py` | `iters=5000`, `T=20.0`, `width=64`, `n_collocation=200`, `lr=1e-3`, `beta=0.8`, `gamma=0.2`, `umax=1.0`, `A=10.0`, `B=1.0`, `AT=10.0` |
 | `src/pmp_informed_pinn_malware.py` | `iters=5000`, `T=20.0`, `width=64`, `n_collocation=200`, `lr=1e-3`, `beta=0.8`, `gamma=0.2`, `umax=1.0`, `A=10.0`, `B=1.0`, `AT=10.0` |
-| `src/node_siprs_inverse_pinn.py` | `iters=500`, `nodes=8`, `grid=61`, `observed_nodes=4`, `observed_times=14`, `collocation=32`, `width=32`, `lr=1e-3` |
+| `src/node_siprs_inverse_pinn.py` | `iters=500`, `nodes=8`, `communities=2`, `grid=61`, `observed_nodes=4`, `observed_times=14`, `collocation=32`, `width=32`, `lr=1e-3` |
 
 ## What To Change First
 

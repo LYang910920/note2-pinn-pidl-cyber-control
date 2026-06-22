@@ -6,9 +6,10 @@ Small inverse PINN for node-level SIPRS dynamics on a graph.
 
 The example uses the canonical foundation SIPRS simulator to create synthetic
 truth, observes infected probabilities for only a subset of nodes/times, and
-learns hidden node states plus beta/gamma.  It is intentionally small: a
-time-only MLP is a bridge from aggregate examples to graph-aware models, not a
-claim that this architecture scales to large graphs.
+learns hidden node states plus positive community-specific susceptibility,
+infectivity, and recovery multipliers.  The architecture is small: a time-only
+MLP is a bridge from aggregate examples to graph-aware models, not a claim that
+this architecture scales to large graphs.
 """
 
 from __future__ import annotations
@@ -20,7 +21,13 @@ from pathlib import Path
 
 import numpy as np
 
-from cybercontrol.network_models import NodeSIPRSParams, node_siprs_rhs_numpy, node_siprs_rhs_torch, normalize_adjacency
+from cybercontrol.network_models import (
+    NodeSIPRSParams,
+    community_correlated_node_siprs_params,
+    node_siprs_rhs_numpy,
+    node_siprs_rhs_torch,
+    normalize_adjacency,
+)
 from cybercontrol.numerics import project_compartments, rk4_integrate
 from cybercontrol.torch_utils import MLP, positive, time_derivative, configure_torch
 
@@ -30,10 +37,12 @@ class NodeSIPRSInverseConfig:
     """Configuration for a tiny node-SIPRS inverse PINN smoke experiment."""
 
     nodes: int = 8
+    communities: int = 2
     horizon: float = 6.0
     grid: int = 61
     beta_true: float = 0.82
     gamma_true: float = 0.18
+    heterogeneity_strength: float = 0.35
     omega_p: float = 0.03
     omega_r: float = 0.02
     patch: float = 0.08
@@ -56,11 +65,18 @@ def toy_adjacency(nodes: int) -> np.ndarray:
     return normalize_adjacency(A)
 
 
+def community_index(nodes: int, communities: int) -> np.ndarray:
+    """Assign nodes to contiguous communities for identifiable small-rate maps."""
+
+    return np.minimum(np.arange(nodes) * communities // nodes, communities - 1)
+
+
 def generate_truth(cfg: NodeSIPRSInverseConfig):
-    """Generate canonical node-SIPRS truth with fixed patch/clean controls."""
+    """Generate heterogeneous node-SIPRS truth with fixed patch/clean controls."""
 
     rng = np.random.default_rng(cfg.seed)
     A = toy_adjacency(cfg.nodes)
+    community = community_index(cfg.nodes, cfg.communities)
     x0 = np.zeros((cfg.nodes, 4), dtype=np.float64)
     x0[:, 0] = 1.0 - 0.04
     x0[:, 1] = 0.04
@@ -68,7 +84,14 @@ def generate_truth(cfg: NodeSIPRSInverseConfig):
     x0[seeds, 1] += 0.08
     x0[seeds, 0] -= 0.08
     x0 = project_compartments(x0)
-    params = NodeSIPRSParams(beta=cfg.beta_true, gamma=cfg.gamma_true, omega_p=cfg.omega_p, omega_r=cfg.omega_r)
+    params = community_correlated_node_siprs_params(
+        community,
+        strength=cfg.heterogeneity_strength,
+        beta=cfg.beta_true,
+        gamma=cfg.gamma_true,
+        omega_p=cfg.omega_p,
+        omega_r=cfg.omega_r,
+    )
     t = np.linspace(0.0, cfg.horizon, cfg.grid)
 
     def rhs_flat(y, tau):
@@ -87,7 +110,7 @@ def generate_truth(cfg: NodeSIPRSInverseConfig):
             project=lambda z: project_compartments(z.reshape(cfg.nodes, 4)).reshape(-1),
         )
         path.append(y.reshape(cfg.nodes, 4).copy())
-    return t, np.asarray(path), A
+    return t, np.asarray(path), A, community, params
 
 
 class NodeSIPRSStateNet:
@@ -112,13 +135,15 @@ def train(args):
     torch, device, _ = configure_torch(seed=args.seed, device=args.device, threads=1)
     cfg = NodeSIPRSInverseConfig(
         nodes=args.nodes,
+        communities=args.communities,
         grid=args.grid,
         observed_nodes=args.observed_nodes,
         observed_times=args.observed_times,
         noise=args.noise,
         seed=args.seed,
+        heterogeneity_strength=args.heterogeneity_strength,
     )
-    t_np, x_np, A_np = generate_truth(cfg)
+    t_np, x_np, A_np, community_np, truth_params = generate_truth(cfg)
     rng = np.random.default_rng(cfg.seed)
     node_idx = np.sort(rng.choice(cfg.nodes, size=min(cfg.observed_nodes, cfg.nodes), replace=False))
     data_idx = np.linspace(0, cfg.grid - 1, cfg.observed_times, dtype=int)
@@ -133,17 +158,28 @@ def train(args):
     t_f.requires_grad_(True)
     x0 = torch.tensor(x_np[0], dtype=torch.float32, device=device)
     A_t = torch.tensor(A_np, dtype=torch.float32, device=device)
+    community_t = torch.tensor(community_np, dtype=torch.long, device=device)
     model = NodeSIPRSStateNet(torch, cfg.nodes, args.width, args.depth, device)
-    beta_raw = torch.nn.Parameter(torch.tensor(0.0, device=device))
-    gamma_raw = torch.nn.Parameter(torch.tensor(-1.0, device=device))
-    opt = torch.optim.Adam(list(model.parameters()) + [beta_raw, gamma_raw], lr=args.lr)
+    community_count = int(np.max(community_np)) + 1
+    susceptibility_raw = torch.nn.Parameter(torch.zeros(community_count, device=device))
+    infectivity_raw = torch.nn.Parameter(torch.zeros(community_count, device=device))
+    gamma_raw = torch.nn.Parameter(torch.full((community_count,), -1.6, device=device))
+    opt = torch.optim.Adam(list(model.parameters()) + [susceptibility_raw, infectivity_raw, gamma_raw], lr=args.lr)
     node_idx_t = torch.tensor(node_idx, dtype=torch.long, device=device)
+    truth_resolved = truth_params.resolve(cfg.nodes)
+    truth_sus = np.array([truth_resolved.susceptibility[community_np == c].mean() for c in range(community_count)])
+    truth_inf = np.array([truth_resolved.infectivity[community_np == c].mean() for c in range(community_count)])
+    truth_gamma = np.array([truth_resolved.gamma[community_np == c].mean() for c in range(community_count)])
     history = []
 
     for it in range(args.iters):
         opt.zero_grad()
-        beta = positive(beta_raw)
-        gamma = positive(gamma_raw)
+        susceptibility_c = positive(susceptibility_raw)
+        infectivity_c = positive(infectivity_raw)
+        gamma_c = positive(gamma_raw)
+        susceptibility = susceptibility_c[community_t]
+        infectivity = infectivity_c[community_t]
+        gamma = gamma_c[community_t]
         pred_data = model(t_data)[:, node_idx_t, 1]
         loss_data = torch.mean((pred_data - y_data) ** 2)
         pred0 = model(torch.zeros(1, 1, device=device))[0]
@@ -151,7 +187,14 @@ def train(args):
         x_f = model(t_f)
         flat = x_f.reshape(x_f.shape[0], -1)
         dxdt = time_derivative(flat, t_f).reshape_as(x_f)
-        params = NodeSIPRSParams(beta=beta, gamma=gamma, omega_p=cfg.omega_p, omega_r=cfg.omega_r)
+        params = NodeSIPRSParams(
+            beta=cfg.beta_true,
+            susceptibility=susceptibility,
+            infectivity=infectivity,
+            gamma=gamma,
+            omega_p=cfg.omega_p,
+            omega_r=cfg.omega_r,
+        )
         rhs = torch.stack(
             [
                 node_siprs_rhs_torch(x_f[k], A_t, params, patch=cfg.patch, clean=cfg.clean)
@@ -161,7 +204,8 @@ def train(args):
         )
         loss_residual = torch.mean((dxdt - rhs) ** 2)
         loss_mass = torch.mean((x_f.sum(dim=-1) - 1.0) ** 2)
-        loss = loss_data + args.w_ic * loss_ic + args.w_residual * loss_residual + args.w_mass * loss_mass
+        loss_reg = torch.mean((susceptibility_c - 1.0) ** 2) + torch.mean((infectivity_c - 1.0) ** 2)
+        loss = loss_data + args.w_ic * loss_ic + args.w_residual * loss_residual + args.w_mass * loss_mass + args.w_param_reg * loss_reg
         loss.backward()
         opt.step()
         if it % args.log_every == 0 or it == args.iters - 1:
@@ -176,16 +220,20 @@ def train(args):
                     "data_loss": float(loss_data.detach().cpu()),
                     "residual_loss": float(loss_residual.detach().cpu()),
                     "heldout_state_mse": held_mse,
-                    "beta": float(beta.detach().cpu()),
-                    "gamma": float(gamma.detach().cpu()),
-                    "beta_abs_error": abs(float(beta.detach().cpu()) - cfg.beta_true),
-                    "gamma_abs_error": abs(float(gamma.detach().cpu()) - cfg.gamma_true),
+                    "rate_model": "community-specific susceptibility/infectivity/gamma",
+                    "beta_fixed": float(cfg.beta_true),
+                    "susceptibility_rmse": float(np.sqrt(np.mean((susceptibility_c.detach().cpu().numpy() - truth_sus) ** 2))),
+                    "infectivity_rmse": float(np.sqrt(np.mean((infectivity_c.detach().cpu().numpy() - truth_inf) ** 2))),
+                    "gamma_rmse": float(np.sqrt(np.mean((gamma_c.detach().cpu().numpy() - truth_gamma) ** 2))),
+                    "susceptibility_mean": float(susceptibility_c.detach().cpu().mean()),
+                    "infectivity_mean": float(infectivity_c.detach().cpu().mean()),
+                    "gamma_mean": float(gamma_c.detach().cpu().mean()),
                     "mass_error": float(torch.max(torch.abs(x_f.sum(dim=-1) - 1.0)).detach().cpu()),
                 }
                 history.append(row)
                 print(
                     f"it={it:05d}, loss={row['loss']:.3e}, heldout={held_mse:.2e}, "
-                    f"beta={row['beta']:.3f}, gamma={row['gamma']:.3f}"
+                    f"sus_rmse={row['susceptibility_rmse']:.3f}, gamma_rmse={row['gamma_rmse']:.3f}"
                 )
     if getattr(args, "return_history", False):
         return model, history, asdict(cfg)
@@ -196,6 +244,7 @@ def build_parser():
     parser = argparse.ArgumentParser(description="Small inverse PINN for canonical node-SIPRS graph dynamics.")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--nodes", type=int, default=8)
+    parser.add_argument("--communities", type=int, default=2)
     parser.add_argument("--grid", type=int, default=61)
     parser.add_argument("--observed-nodes", type=int, default=4)
     parser.add_argument("--observed-times", type=int, default=14)
@@ -208,8 +257,10 @@ def build_parser():
     parser.add_argument("--w-ic", type=float, default=10.0)
     parser.add_argument("--w-residual", type=float, default=1.0)
     parser.add_argument("--w-mass", type=float, default=1.0)
+    parser.add_argument("--w-param-reg", type=float, default=1e-3)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--seed", type=int, default=31)
+    parser.add_argument("--heterogeneity-strength", type=float, default=0.35)
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--output-csv", type=Path, default=None)
     return parser
@@ -221,6 +272,7 @@ if __name__ == "__main__":
         args.device = None
     if args.smoke:
         args.nodes = 6
+        args.communities = 2
         args.grid = 25
         args.observed_nodes = 3
         args.observed_times = 8
