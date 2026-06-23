@@ -108,7 +108,7 @@ Inverse PINN & Model form $f$, partial observations & Parameters $\theta$ and hi
 Control PINN & Model, cost functional, constraints & Control function $u(t)$ and state $x(t)$ & Cost + ODE residual + control bounds \\
 PMP-informed PINN & PMP optimality system & State, costate, control & State residual + costate residual + stationarity + boundary \\
 Game-aware PINN & Game model and objectives & Multi-player controls/costates & State residual + player-wise optimality residuals + game validation \\
-Hybrid/impulse PINN & ODE between events and jump map & Piecewise states/controls and impulse strengths & ODE residuals + jump residuals + event constraints \\
+Continuous--impulsive PINN & ODE between events and jump map & Piecewise states/controls and impulse strengths & ODE residuals + jump residuals + event constraints \\
 \bottomrule
 \end{longtable}
 \end{small}
@@ -584,7 +584,7 @@ The most important difference is that there is no single Hamiltonian in a genera
 \end{equation}
 In implementation, this means that a game-aware PINN loss should not simply minimize $J_A+J_D$ unless the game is intentionally reformulated as a cooperative problem. For attacker-defender games, minimizing a combined scalar loss may destroy the competitive meaning of Nash equilibrium. A clearer approach is to use the scalar training loss only as a numerical device that penalizes all players' residuals, while still reporting game-specific validation such as unilateral deviations.
 
-\section{Hybrid and Impulsive Dynamics in a PINN Framework}
+\section{Switched, Parameterized, and Impulsive Dynamics in a PINN Framework}
 
 Cyber interventions are not always smooth. A patch campaign may continuously reduce vulnerability, while an emergency shutdown or awareness campaign may cause a sudden jump in state.
 
@@ -617,14 +617,14 @@ The function $G_i$ is the jump map, and $v_i$ is the impulse strength. The PINN 
     \mathcal{L}_{jump}=\sum_i \norm{\hat{x}(\tau_i^+)-G_i(\hat{x}(\tau_i^-),v_i)}^2.
 \end{equation}
 
-\subsection{Hybrid control}
-Hybrid control combines a discrete mode with a continuous intensity. For example,
+\subsection{Parameterized sampled actions}
+A parameterized sampled action combines a discrete mode with a continuous-valued intensity. For example,
 \begin{equation}
     a_k=(m_k,v_k), \qquad m_k\in\{\text{patch},\text{monitor},\text{isolate},\text{deceive}\},\quad v_k\in[0,1].
 \end{equation}
-If the mode only changes the derivative, use a piecewise ODE. If the mode causes an immediate jump, add a jump residual.
+If the mode only changes the derivative, use a piecewise ODE and do not add a jump residual. If the mode causes an immediate jump, add a jump residual. A model with both flow control and reset maps is continuous--impulsive.
 
-\begin{examplebox}{Hybrid misinformation intervention}
+\begin{examplebox}{Continuous--impulsive misinformation intervention}
 A continuous fact-checking effort changes the derivative by increasing counter-message adoption. A sudden platform announcement may instantly move a fraction of misinformation spreaders into the counter-message state. The first effect belongs in $f$; the second effect belongs in $G$.
 \end{examplebox}
 
@@ -644,7 +644,7 @@ For cyber propagation, a practical distinction is the following:
 \text{Known mechanism, unknown solution} & \Rightarrow & \text{Forward PINN},\\
 \text{Known mechanism, unknown parameters} & \Rightarrow & \text{Inverse PINN},\\
 \text{Known mechanism, unknown control} & \Rightarrow & \text{Control PINN},\\
-\text{Partially unknown mechanism} & \Rightarrow & \text{Hybrid PINN/Neural ODE},\\
+\text{Partially unknown mechanism} & \Rightarrow & \text{Model-data PINN/Neural ODE},\\
 \text{Data plus constraints plus priors} & \Rightarrow & \text{PIDL framework}.
 \end{array}
 \end{equation}
@@ -1371,7 +1371,8 @@ Soft constraint & A constraint enforced by a penalty term in the loss. \\
 Open-loop control & A control represented as a function of time over the horizon. \\
 Feedback control & A control represented as a function of the current state. \\
 Impulse & A discrete event that causes an instantaneous jump in the state. \\
-Hybrid control & A combination of continuous evolution, discrete modes, and possibly impulses. \\
+Parameterized action & A sampled action $(m_k,v_k)$ with a mode and intensity; no jump unless a reset map is specified. \\
+Continuous--impulsive control & Flow control together with one or more state-reset maps. \\
 Identifiability & Whether parameters can be uniquely inferred from the available observations and model. \\
 \bottomrule
 \end{longtable}
