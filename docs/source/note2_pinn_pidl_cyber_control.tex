@@ -1245,13 +1245,13 @@ Collocation points can be sampled uniformly, randomly, or adaptively. Uniform sa
 \subsection{Softmax for compartment conservation}
 For compartments that must be nonnegative and sum to one, use
 \begin{equation}
-    [\hat{S},\hat{I},\hat{R}]=\softmax([z_S,z_I,z_R]),
+    [\hat{S},\hat{I},\hat{P}]=\softmax([a_S,a_I,a_P]),
 \end{equation}
 where
 \begin{equation}
-    \softmax(z_i)=\frac{e^{z_i}}{\sum_k e^{z_k}}.
+    \softmax(a_i)=\frac{e^{a_i}}{\sum_\ell e^{a_\ell}}.
 \end{equation}
-This enforces $\hat{S}+\hat{I}+\hat{R}=1$ and each component is positive.
+This enforces $\hat{S}+\hat{I}+\hat{P}=1$ and each component is positive.
 
 \subsection{Sigmoid for bounded controls}
 To enforce $u(t)\in[0,u_{\max}]$, use
