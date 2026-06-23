@@ -48,7 +48,7 @@ $\mathcal{L}$ & Training loss, usually a weighted sum of data, residual, boundar
 
 \section{Why PINNs for Cyber Propagation?}
 
-Cybersecurity propagation models often have a mechanistic structure. Examples include malware spreading in Internet-of-Things networks, APT compromise and recovery, rumor diffusion, misinformation propagation, and propaganda/counter-propaganda dynamics. These topics are closely related to recent cyber control studies on malware optimal control, APT security evaluation, and hybrid propaganda-war games \cite{jafar2024malware,yang2019apt,cheng2024hodge}. A generic compartment model has the form
+Cybersecurity propagation models often have a mechanistic structure. Examples include malware spreading in Internet-of-Things networks, APT compromise and recovery, rumor diffusion, misinformation propagation, and propaganda/counter-propaganda dynamics. These topics are closely related to recent cyber control studies on malware optimal control, APT security evaluation, and continuous-impulsive propaganda-war games \cite{jafar2024malware,yang2019apt,cheng2024hodge}. A generic compartment model has the form
 \begin{equation}
     \dot{x}(t)=f(x(t),u(t),\theta,t), \qquad x(0)=x_0,
     \label{eq:generic_ode}
@@ -681,7 +681,7 @@ Setting & Better described as & Reason \\
 Known ODE, unknown state trajectory & Forward PINN & The equation is fixed and the network approximates the solution. \\
 Known ODE, unknown parameters & Inverse PINN & Parameters are trainable variables constrained by the residual. \\
 Known ODE, unknown control & Control PINN & The control is represented by a network and optimized with cost or PMP residuals. \\
-Known ODE plus unknown correction term & PIDL / hybrid PINN-Neural ODE & The network learns missing physics/cyber mechanisms. \\
+Known ODE plus unknown correction term & PIDL / PINN-Neural ODE blend & The network learns missing physics/cyber mechanisms. \\
 ODE solver embedded in training & PIDL / differentiable simulation & The constraint is enforced through rollout rather than only local residuals. \\
 ODE plus PMP/HJB/game residuals & Game-aware or control-aware PIDL & The learning objective includes optimality or equilibrium conditions. \\
 \bottomrule
@@ -935,7 +935,7 @@ A clear PINN implementation is usually built in stages rather than all at once. 
     \item \textbf{Stage 2: inverse parameter learning.} Make a small number of parameters trainable. Start with synthetic data where the true parameters are known. Verify recovery.
     \item \textbf{Stage 3: sparse/noisy data stress test.} Reduce observations and add noise. Report how parameter uncertainty increases.
     \item \textbf{Stage 4: control.} Add a control network or PMP-informed costate network. Compare against no control, static control, and a classical numerical method when available.
-    \item \textbf{Stage 5: hybrid/game extension.} Add impulse residuals or player-wise optimality residuals only after the single-player continuous case is stable.
+    \item \textbf{Stage 5: impulse/game extension.} Add impulse residuals or player-wise optimality residuals only after the single-player continuous case is stable.
 \end{enumerate}
 
 \subsection{Diagnostics to plot}
@@ -1203,7 +1203,7 @@ A practical default for ODE-based cyber propagation is:
 \begin{equation}
     \text{MLP}(1,64,64,64,64,d_{out}) \quad \text{with } \tanh \text{ activations}.
 \end{equation}
-For high-dimensional degree-based models, increase width before increasing depth. For stiff or impulsive dynamics, a single global network may struggle; use piecewise networks, more collocation points near sharp changes, or a hybrid PINN with separate intervals.
+For high-dimensional degree-based models, increase width before increasing depth. For stiff or impulsive dynamics, a single global network may struggle; use piecewise networks, more collocation points near sharp changes, or interval-specific PINN components.
 
 \subsection*{A.4 Initialization}
 Default Xavier initialization is usually sufficient. For inverse parameters, initialize raw parameters so that transformed values are near plausible priors. For example, if $\beta$ is expected near $0.5$, initialize $b_\beta$ such that $\softplus(b_\beta)\approx 0.5$. Bad parameter initialization can lead to a visually plausible trajectory but incorrect parameter recovery.

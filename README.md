@@ -6,7 +6,7 @@ Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residu
 
 | Order | Repository | Role |
 |---:|---|---|
-| 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-vs-node scalability, and reference smoke runs. |
+| 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous-time, impulse, and continuous-impulsive examples, degree-vs-node scalability, and reference smoke runs. |
 | 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPS MAPPO, and larger node-SIPS attacker-defender benchmarks. |
 | 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPS inverse learning. |
 

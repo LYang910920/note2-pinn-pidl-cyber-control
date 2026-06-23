@@ -153,7 +153,7 @@ Change the correction network input from \((t,x)\) to \((t,x,u)\) or to graph fe
 Change the control network input from \(t\) to \((t,x)\), then train over multiple initial states and parameter scenarios. This produces a feedback-like neural control law rather than one open-loop control curve.
 
 \subsection{From small SIR models to network-scale PINNs}
-Move gradually: first degree-level compartments, then node-level vectors or graph-neural PINNs. For stiff, impulsive, or hybrid dynamics, use piecewise networks and add collocation points near jump times.
+Move gradually: first degree-level compartments, then node-level vectors or graph-neural PINNs. For stiff, impulsive, or continuous-impulsive dynamics, use piecewise networks and add collocation points near jump times.
 
 \section{Troubleshooting}
 \begin{itemize}
