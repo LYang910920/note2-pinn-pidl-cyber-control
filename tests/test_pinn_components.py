@@ -87,8 +87,10 @@ class PinnComponentTests(unittest.TestCase):
             return_history = True
 
         _, history, cfg = train_node_sips(Args())
+        iterations = [row["iteration"] for row in history]
         self.assertEqual(cfg["nodes"], 5)
         self.assertGreaterEqual(len(history), 1)
+        self.assertEqual(len(iterations), len(set(iterations)))
         self.assertIn("heldout_state_mse", history[-1])
         self.assertIn("heldout_node_state_mse", history[-1])
         self.assertIn("homogeneous_misspec_state_mse", history[-1])

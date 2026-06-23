@@ -33,9 +33,9 @@ Use `src/node_sips_inverse_pinn.py` as the first graph/node bridge. It generates
 
 | Item | Choice in the current code |
 |---|---|
-| State | node probabilities `x_i=[S_i,I_i,P_i,R_i]` |
+| State | node probabilities `x_i=[S_i,I_i,P_i]` |
 | Truth generator | `cybercontrol.network_models.node_sips_rhs_numpy` plus RK4 with community-correlated heterogeneous SIPS parameters |
-| Neural state | time-only MLP reshaped to `[time, nodes, 4]` and softmaxed by node |
+| Neural state | time-only MLP reshaped to `[time, nodes, 3]` and softmaxed by node |
 | Learned rates | positive community-specific susceptibility, infectivity, and recovery; base beta is fixed in the small smoke example |
 | Observations | infected probabilities on selected nodes and selected times |
 | Residual | canonical `node_sips_rhs_torch` on the same graph and controls |

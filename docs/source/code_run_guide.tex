@@ -105,7 +105,8 @@ Expected output:
 \item CSV histories under \texttt{artifacts/experiments/};
 \item baseline metrics in \texttt{artifacts/experiments/baseline\_comparison\_metrics.csv};
 \item \texttt{OUTPUT\_PREVIEW.md} and \texttt{training\_summary.md};
-\item \texttt{artifacts/figures/training\_iteration\_diagnostics.png} and \texttt{artifacts/figures/baseline\_comparison.png}.
+\item diagnostic figures under \texttt{artifacts/figures/}, including the
+training-diagnostics and baseline-comparison panels.
 \end{itemize}
 
 \section{How to Interpret Outputs}
@@ -124,7 +125,7 @@ Boundary loss & Whether the state initial condition and costate terminal conditi
 \end{longtable}
 
 \section{Output Map}
-Start with \texttt{artifacts/experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, baseline-comparison panel, and file. Then inspect \texttt{artifacts/figures/training\_iteration\_diagnostics.png}, \texttt{artifacts/figures/baseline\_comparison.png}, and the CSV file for the experiment you are studying.
+Start with \texttt{artifacts/experiments/OUTPUT\_PREVIEW.md}. It groups the generated results by experiment, diagnostic panel, baseline-comparison panel, and file. Then inspect the generated figures in \texttt{artifacts/figures/} and the CSV file for the experiment you are studying.
 
 \begin{longtable}{p{0.28\textwidth}p{0.62\textwidth}}
 \toprule
@@ -137,7 +138,7 @@ File & What it shows \\
 \texttt{node\_sips\_inverse\_}\newline\texttt{history.csv} & Held-out node-state error, mass error, and community-rate RMSE for the heterogeneous graph inverse-PINN smoke route. \\
 \texttt{baseline\_comparison\_}\newline\texttt{metrics.csv} & Topic-specific baseline metrics for inverse PINN, PIDL, and controlled malware mitigation. \\
 \texttt{training\_iteration\_}\newline\texttt{diagnostics.png} & Four-panel comparison of the main loss and residual signals. \\
-\texttt{baseline\_comparison.png} & Learned methods compared with sparse interpolation, wrong-parameter SIR, known-SIR-only dynamics, and no/fixed-control baselines. \\
+\texttt{baseline\_comparison}\newline\texttt{.png} & Learned methods compared with sparse interpolation, wrong-parameter SIR, known-SIR-only dynamics, and no/fixed-control baselines. \\
 \bottomrule
 \end{longtable}
 

@@ -98,7 +98,8 @@ These tasks are related but not identical. A common source of confusion is to ca
 \subsection{A clearer taxonomy of PINN tasks}
 The same mathematical model can lead to different PINN formulations depending on what is known and what is unknown. The following table should be read before designing a network. It prevents a common mistake: using a single loss expression without first deciding what the unknown object actually is.
 
-\begin{longtable}{p{0.22\linewidth}p{0.22\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\begin{small}
+\begin{longtable}{p{0.19\linewidth}p{0.21\linewidth}p{0.23\linewidth}p{0.25\linewidth}}
 \toprule
 Task & Known quantities & Unknown quantities & Main loss terms \\
 \midrule
@@ -110,6 +111,7 @@ Game-aware PINN & Game model and objectives & Multi-player controls/costates & S
 Hybrid/impulse PINN & ODE between events and jump map & Piecewise states/controls and impulse strengths & ODE residuals + jump residuals + event constraints \\
 \bottomrule
 \end{longtable}
+\end{small}
 
 A practical rule is: start from the simplest task that can answer the research question. If the goal is only to estimate $\beta$ and $\gamma$, do not introduce control networks. If the goal is to compute an optimal defense plan, first verify the forward and inverse PINNs, then add control. If the goal is a game, first solve or validate the single-player control version, then add player-wise Hamiltonians.
 
@@ -213,7 +215,7 @@ Loss component & It encourages & Without it, the risk is \\
 Data loss & Agreement with observations & Smooth but wrong model-consistent curves \\
 ODE residual & Agreement with the assumed dynamics & Overfitting sparse/noisy observations \\
 Initial/boundary loss & Correct starting/terminal conditions & Time-shifted or boundary-inconsistent solutions \\
-Conservation/positivity loss & Valid compartment proportions & Negative populations or mass imbalance \\
+Conservation/\newline positivity loss & Valid compartment proportions & Negative populations or mass imbalance \\
 Parameter prior/range & Realistic learned rates & Nonphysical but numerically convenient parameters \\
 Control cost & Cost-effective defense & Always using maximum control \\
 Stationarity residual & First-order optimality & A feasible control that is not necessarily optimal \\
@@ -1165,14 +1167,14 @@ A complete PINN study should report the following.
 
 \section{Python Implementation Map}
 The companion code folder contains executable examples for the main PINN/PIDL tasks in this note.  The examples are designed to be readable and extendable.
-\begin{longtable}{p{0.34\textwidth}p{0.56\textwidth}}
+\begin{longtable}{p{0.30\textwidth}p{0.60\textwidth}}
 \toprule
 Python file & PINN/PIDL task \\
 \midrule
-\texttt{inverse\_pinn\_sir\_malware.py} & inverse PINN: learn hidden states and unknown SIR parameters from sparse infection observations. \\
-\texttt{pidl\_unknown\_mechanism.py} & PIDL correction: combine known SIR dynamics with a learned missing transfer term. \\
-\texttt{control\_pinn\_malware.py} & direct neural-control PINN: train state and control networks by objective plus residual loss. \\
-\texttt{pmp\_informed\_pinn\_malware.py} & PMP-informed PINN: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
+\texttt{inverse\_pinn\_sir\_}\newline\texttt{malware.py} & inverse PINN: learn hidden states and unknown SIR parameters from sparse infection observations. \\
+\texttt{pidl\_unknown\_}\newline\texttt{mechanism.py} & PIDL correction: combine known SIR dynamics with a learned missing transfer term. \\
+\texttt{control\_pinn\_}\newline\texttt{malware.py} & direct neural-control PINN: train state and control networks by objective plus residual loss. \\
+\texttt{pmp\_informed\_pinn\_}\newline\texttt{malware.py} & PMP-informed PINN: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
 \bottomrule
 \end{longtable}
 The separate running guide explains the exact commands, smoke tests, and troubleshooting steps.

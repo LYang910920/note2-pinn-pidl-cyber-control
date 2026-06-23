@@ -17,7 +17,7 @@ Use this page before changing losses, networks, collocation points, or the cyber
 
 | Term | Meaning in Note 2 |
 |---|---|
-| `trajectory` | A time-indexed state path such as `[S(t),I(t),R(t)]` or node-level `[S_i(t),I_i(t),P_i(t),R_i(t)]`. PINN/PIDL state networks approximate trajectories. |
+| `trajectory` | A time-indexed state path such as `[S(t),I(t),R(t)]` or node-level SIPS `[S_i(t),I_i(t),P_i(t)]`. PINN/PIDL state networks approximate trajectories. |
 | `rollout` | A forward simulation through the original ODE or graph simulator using a fixed parameter set or control policy. It is used for validation because it evaluates behavior outside the training loss. |
 | `wrong-parameter rollout` | A deliberately misspecified baseline: it uses the correct SIR model form but inaccurate beta/gamma values, then rolls the ODE forward to show what happens without inverse parameter learning. |
 | `baseline` | A simple method evaluated on the same topic and metric, such as sparse interpolation, known-SIR-only dynamics, no control, fixed control, or a rollout-optimized control. |
@@ -77,6 +77,15 @@ This smoke route is a graph/node bridge. It uses the Foundation SIPS simulator t
 | training defaults | `iters=500`, `width=32`, `depth=2`, `collocation=32`, `lr=1e-3`, parameter regularization `1e-3` |
 | smoke profile | `nodes=6`, `grid=25`, `observed_nodes=3`, `observed_times=8`, `collocation=12`, `iters=12` |
 | main validation metric | `heldout_state_mse` on unobserved time points, `heldout_node_state_mse` on nodes not used in the infected-data loss, homogeneous-misspecification state MSE, susceptibility/infectivity/gamma RMSE, and `mass_error` |
+
+Audited medium command:
+
+```bash
+python run_all.py node-inverse --device cpu \
+  --output-csv artifacts/extended_validation/node_inverse.csv
+```
+
+On the audited local CPU run, the final held-out state MSE was about `6.10e-3`, compared with a matched homogeneous misspecification rollout error of about `6.81e-3`. This supports the state-recovery diagnostic for this profile. The susceptibility and infectivity RMSE values remain larger, so parameter recovery should still be presented with identifiability caveats and additional seeds/noise levels.
 
 ## GPU-Oriented Diagnostic Profile
 

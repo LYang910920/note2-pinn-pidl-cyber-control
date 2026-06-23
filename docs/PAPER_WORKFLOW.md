@@ -15,7 +15,7 @@ PMP-informed PINNs, and a small node-level SIPS graph inverse-learning bridge.
 | `u_phi(t)` | `ControlNet` | Bounded continuous control network. |
 | `lambda_psi(t)` | `costate = MLP(...)` | PMP-informed costate network. |
 | `d/dt` | `cybercontrol.torch_utils.time_derivative` | Autograd time derivative for residual losses. |
-| `x_i=[S_i,I_i,P_i,R_i]` | `src/node_sips_inverse_pinn.py` | Node-level SIPS state on a graph. |
+| `x_i=[S_i,I_i,P_i]` | `src/node_sips_inverse_pinn.py` | Node-level SIPS state on a graph. |
 | `\widetilde A_{ij}` | `toy_adjacency`, `node_sips_rhs_torch` | Node `j` contributes infection pressure to node `i`. |
 
 ## Recommended Paper Path
