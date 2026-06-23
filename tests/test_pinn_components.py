@@ -9,7 +9,7 @@ import torch
 from control_pinn_malware import ControlNet, StateNet, rhs
 from experiment_profiles import describe_profiles, get_profile
 from inverse_pinn_sir_malware import generate_data
-from node_sips_inverse_pinn import NodeSIPSInverseConfig, generate_truth, train as train_node_sips
+from node_sips_inverse_pinn import NodeSIPSInverseConfig, generate_truth, resolve_node_inverse_device, train as train_node_sips
 from pidl_unknown_mechanism import generate
 from pmp_informed_pinn_malware import hamiltonian
 
@@ -97,6 +97,12 @@ class PinnComponentTests(unittest.TestCase):
         self.assertIn("susceptibility_rmse", history[-1])
         self.assertGreater(history[-1]["homogeneous_misspec_state_mse"], 0.0)
         self.assertLess(history[-1]["mass_error"], 1e-6)
+
+    def test_node_sips_inverse_device_resolution_is_explicit(self):
+        self.assertEqual(resolve_node_inverse_device("cpu"), "cpu")
+        self.assertEqual(resolve_node_inverse_device("cuda"), "cuda")
+        self.assertEqual(resolve_node_inverse_device("mps"), "mps")
+        self.assertIn(resolve_node_inverse_device("auto"), {"cpu", "cuda"})
 
     def test_experiment_profiles_are_readable_extension_entries(self):
         profile = get_profile("pmp-informed-pinn")

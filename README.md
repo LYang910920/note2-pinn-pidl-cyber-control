@@ -96,6 +96,11 @@ python run_all.py train --profile teaching --iters 800 --device cpu --threads 1
 python run_all.py node-inverse --device cpu --output-csv artifacts/extended_validation/node_inverse.csv
 ```
 
+`node-inverse --device auto` uses CUDA when available. On MPS-only machines it
+falls back to CPU for this residual-heavy inverse-PINN runner, because current
+PyTorch/MPS builds can abort inside the higher-order residual slicing workload.
+Use `--device mps` only for backend experiments.
+
 In this run, inverse PINN, PIDL, direct-control PINN, and PMP-informed diagnostics all reduced their tracked losses. The baseline comparison selected the inverse PINN for sparse-data state recovery, PIDL for the missing-mechanism case, and rollout-optimized neural control for the control objective.
 The audited node-SIPS inverse run reduced held-out state MSE to about `6.10e-3`, slightly below the matched homogeneous rollout error of about `6.81e-3`; rate recovery remains less identifiable than state recovery in this small time-only network.
 

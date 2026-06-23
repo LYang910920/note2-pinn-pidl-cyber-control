@@ -293,10 +293,38 @@ def build_parser():
     return parser
 
 
+def resolve_node_inverse_device(requested: str) -> str:
+    """Resolve the execution device for this residual-heavy inverse-PINN run.
+
+    CUDA is used when available.  On current PyTorch/MPS builds, this script's
+    repeated time-derivative residuals can abort inside an MPS slice kernel
+    before Python can catch the error.  Auto mode therefore uses CPU on MPS-only
+    machines; explicit ``--device mps`` remains available for experimental
+    backend checks.
+    """
+
+    if requested != "auto":
+        return requested
+    try:
+        import torch as torch_module
+    except ImportError:
+        return "cpu"
+    if torch_module.cuda.is_available():
+        return "cuda"
+    mps_backend = getattr(torch_module.backends, "mps", None)
+    if mps_backend is not None and mps_backend.is_available():
+        print(
+            "node_sips_inverse_pinn: auto device resolved to CPU because this "
+            "higher-order residual workload can abort on current PyTorch/MPS; "
+            "pass --device mps only for backend experiments."
+        )
+        return "cpu"
+    return "cpu"
+
+
 if __name__ == "__main__":
     args = build_parser().parse_args()
-    if args.device == "auto":
-        args.device = None
+    args.device = resolve_node_inverse_device(args.device)
     if args.smoke:
         args.nodes = 6
         args.communities = 2
