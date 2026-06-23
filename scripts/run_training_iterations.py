@@ -699,7 +699,7 @@ Open `artifacts/experiments/training_diagnostic_glossary.md` before reading the 
 | Direct control PINN total loss | {control[0]["loss"]:.3e} | {control[-1]["loss"]:.3e} | {reduction(control[0]["loss"], control[-1]["loss"]):.3e} |
 | PMP-informed stationarity loss | {pmp[0]["stationarity_loss"]:.3e} | {pmp[-1]["stationarity_loss"]:.3e} | {reduction(pmp[0]["stationarity_loss"], pmp[-1]["stationarity_loss"]):.3e} |
 
-The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training.  In this tutorial run, the stationarity residual is the most important quick sanity signal.
+The PMP-informed total loss can decrease more slowly because the costate boundary term and Hamiltonian residuals compete early in training. In this bounded run, the stationarity residual is the quickest sanity signal.
 
 ## Baseline Comparison Snapshot
 

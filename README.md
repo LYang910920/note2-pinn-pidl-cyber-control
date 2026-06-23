@@ -1,14 +1,14 @@
 # Physics-Informed Cyber Control
 
-Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPRS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
+Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
 
 ## Repository Family
 
 | Order | Repository | Role |
 |---:|---|---|
 | 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous/impulse/hybrid examples, degree-vs-node scalability, and reference smoke runs. |
-| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPRS MAPPO, and larger node-SIPRS attacker-defender benchmarks. |
-| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPRS inverse learning. |
+| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPS MAPPO, and larger node-SIPS attacker-defender benchmarks. |
+| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPS inverse learning. |
 
 ## 5-Minute Quick Start
 
@@ -46,15 +46,15 @@ python run_all.py train
 | Inverse PINN | `src/inverse_pinn_sir_malware.py` |
 | PIDL missing-mechanism example | `src/pidl_unknown_mechanism.py` |
 | Neural control and PMP-informed PINN | `src/control_pinn_malware.py`, `src/pmp_informed_pinn_malware.py` |
-| Heterogeneous node-SIPRS inverse PINN | `src/node_siprs_inverse_pinn.py` |
+| Heterogeneous node-SIPS inverse PINN | `src/node_sips_inverse_pinn.py` |
 | Static figures and bounded diagnostics | `scripts/generate_figures.py`, `scripts/run_training_iterations.py` |
 
 ## Capability Status
 
 | Capability | API / file | Command | Metrics | Validation status |
 |---|---|---|---|---|
-| Heterogeneous node-SIPRS inverse PINN | `src/node_siprs_inverse_pinn.py` | `python run_all.py node-inverse --output-csv artifacts/extended_validation/node_inverse.csv` | loss, residual loss, held-out state MSE, held-out-node MSE, mass error | community-specific susceptibility, infectivity, and gamma |
-| Sparse/noisy observations | `NodeSIPRSInverseConfig` | add `--noise`, `--observed-nodes`, `--observed-times` | data loss, held-out-time/node errors | observes infected probability for selected nodes/times |
+| Heterogeneous node-SIPS inverse PINN | `src/node_sips_inverse_pinn.py` | `python run_all.py node-inverse --output-csv artifacts/extended_validation/node_inverse.csv` | loss, residual loss, held-out state MSE, held-out-node MSE, mass error | community-specific susceptibility, infectivity, and gamma |
+| Sparse/noisy observations | `NodeSIPSInverseConfig` | add `--noise`, `--observed-nodes`, `--observed-times` | data loss, held-out-time/node errors | observes infected probability for selected nodes/times |
 | Homogeneous misspecification comparison | `rollout_known_params` | same command | homogeneous-misspecification state MSE | compares heterogeneous truth against global-rate rollout |
 | Identifiability limits | `docs/EXTENDING.md`, `docs/PARAMETERS.md` | documentation | rate RMSE and residual checks | claims remain limited to the configured graph/profile |
 

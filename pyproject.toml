@@ -27,7 +27,7 @@ py-modules = [
     "control_pinn_malware",
     "experiment_profiles",
     "inverse_pinn_sir_malware",
-    "node_siprs_inverse_pinn",
+    "node_sips_inverse_pinn",
     "pidl_unknown_mechanism",
     "pmp_informed_pinn_malware",
 ]

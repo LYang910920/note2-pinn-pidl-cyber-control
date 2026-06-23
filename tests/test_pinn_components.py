@@ -9,7 +9,7 @@ import torch
 from control_pinn_malware import ControlNet, StateNet, rhs
 from experiment_profiles import describe_profiles, get_profile
 from inverse_pinn_sir_malware import generate_data
-from node_siprs_inverse_pinn import NodeSIPRSInverseConfig, generate_truth, train as train_node_siprs
+from node_sips_inverse_pinn import NodeSIPSInverseConfig, generate_truth, train as train_node_sips
 from pidl_unknown_mechanism import generate
 from pmp_informed_pinn_malware import hamiltonian
 
@@ -29,12 +29,12 @@ class PinnComponentTests(unittest.TestCase):
         self.assertEqual(x.shape, (40, 3))
         self.assertTrue(torch.allclose(x.sum(dim=1), torch.ones(40), atol=1e-5))
 
-    def test_node_siprs_truth_generation_shape_and_mass(self):
-        cfg = NodeSIPRSInverseConfig(nodes=6, communities=2, grid=16)
+    def test_node_sips_truth_generation_shape_and_mass(self):
+        cfg = NodeSIPSInverseConfig(nodes=6, communities=2, grid=16)
         t, x, A, community, params = generate_truth(cfg)
 
         self.assertEqual(t.shape, (16,))
-        self.assertEqual(x.shape, (16, 6, 4))
+        self.assertEqual(x.shape, (16, 6, 3))
         self.assertEqual(A.shape, (6, 6))
         self.assertEqual(community.shape, (6,))
         self.assertGreater(float(params.resolve(6).susceptibility.max()), float(params.resolve(6).susceptibility.min()))
@@ -63,7 +63,7 @@ class PinnComponentTests(unittest.TestCase):
         self.assertIsNotNone(u.grad)
         self.assertTrue(torch.isfinite(u.grad).all())
 
-    def test_node_siprs_inverse_pinn_smoke_metrics(self):
+    def test_node_sips_inverse_pinn_smoke_metrics(self):
         class Args:
             nodes = 5
             communities = 2
@@ -86,7 +86,7 @@ class PinnComponentTests(unittest.TestCase):
             log_every = 1
             return_history = True
 
-        _, history, cfg = train_node_siprs(Args())
+        _, history, cfg = train_node_sips(Args())
         self.assertEqual(cfg["nodes"], 5)
         self.assertGreaterEqual(len(history), 1)
         self.assertIn("heldout_state_mse", history[-1])

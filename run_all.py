@@ -38,7 +38,7 @@ def main() -> None:
     if args.command == "train":
         run([py, "scripts/run_training_iterations.py", *rest])
     if args.command == "node-inverse":
-        run([py, "src/node_siprs_inverse_pinn.py", *rest])
+        run([py, "src/node_sips_inverse_pinn.py", *rest])
 
 
 if __name__ == "__main__":

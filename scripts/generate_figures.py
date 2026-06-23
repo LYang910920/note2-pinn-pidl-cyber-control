@@ -1,4 +1,4 @@
-"""Generate static figures for the Note 2 README and tutorial notes.
+"""Generate static figures for the Note 2 README and guide notes.
 
 Copyright (c) 2026 Luxing Yang.
 Licensed under the MIT License. See LICENSE in the repository root.

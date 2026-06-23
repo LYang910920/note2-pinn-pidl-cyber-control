@@ -27,18 +27,18 @@ That command prints the method profiles. Pick the closest one before editing cod
 
 For larger models, move from population-level SIR states to degree-level PINNs, node-level vector states, graph-neural PINNs, operator-learning models, or hybrid neural control with jump losses. Keep the first version small and testable before scaling architecture or data.
 
-Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generates heterogeneous synthetic truth from the canonical foundation SIPRS simulator, observes infected probabilities for selected nodes and times, enforces graph ODE residuals at collocation points, and reports held-out state MSE plus community-rate RMSE. The current time-only MLP is a compact starting point; for larger graphs, replace it with node features, community pooling, or a graph encoder before claiming graph generalization.
+Use `src/node_sips_inverse_pinn.py` as the first graph/node bridge. It generates heterogeneous synthetic truth from the canonical foundation SIPS simulator, observes infected probabilities for selected nodes and times, enforces graph ODE residuals at collocation points, and reports held-out state MSE plus community-rate RMSE. The current time-only MLP is a compact starting point; for larger graphs, replace it with node features, community pooling, or a graph encoder before claiming graph generalization.
 
-## Node-SIPRS Inverse PINN Model Card
+## Node-SIPS Inverse PINN Model Card
 
 | Item | Choice in the current code |
 |---|---|
 | State | node probabilities `x_i=[S_i,I_i,P_i,R_i]` |
-| Truth generator | `cybercontrol.network_models.node_siprs_rhs_numpy` plus RK4 with community-correlated heterogeneous SIPRS parameters |
+| Truth generator | `cybercontrol.network_models.node_sips_rhs_numpy` plus RK4 with community-correlated heterogeneous SIPS parameters |
 | Neural state | time-only MLP reshaped to `[time, nodes, 4]` and softmaxed by node |
 | Learned rates | positive community-specific susceptibility, infectivity, and recovery; base beta is fixed in the small smoke example |
 | Observations | infected probabilities on selected nodes and selected times |
-| Residual | canonical `node_siprs_rhs_torch` on the same graph and controls |
+| Residual | canonical `node_sips_rhs_torch` on the same graph and controls |
 | Metrics | data loss, residual loss, held-out state MSE, susceptibility/infectivity/gamma RMSE, mass error |
 | Claim limit | community-specific rates are identifiable only up to the chosen low-dimensional structure; do not claim per-node parameter recovery from sparse infected-only data |
 | Scaling path | add feature-conditioned positive rate maps, graph encoder, multiple graph seeds, noise/sparsity ablations, and held-out graph sizes |
@@ -52,7 +52,7 @@ Use `src/node_siprs_inverse_pinn.py` as the first graph/node bridge. It generate
 | Unknown cyber mechanisms | `pidl_unknown_mechanism.py` | known physics term plus learned correction term |
 | Multiple controls or constraints | `ControlNet`, `rhs`, `hamiltonian` | bounded control transform and explicit objective terms |
 | PMP-informed paper model | `f_state`, `hamiltonian`, costate residual block | live autograd graph for `H_x` and `H_u` |
-| Network or graph PINNs | `src/node_siprs_inverse_pinn.py` | a small heterogeneous synthetic case before large data or GNN architecture |
+| Network or graph PINNs | `src/node_sips_inverse_pinn.py` | a small heterogeneous synthetic case before large data or GNN architecture |
 
 ## Paper-Level Extension Contract
 
@@ -71,7 +71,7 @@ Use these repositories together:
 | Step | Repository | Focus |
 |---|---|---|
 | 1 | `network-control-differential-games` | PMP, FBSM, degree/node-level network control, differential games |
-| 2 | `note1-cyber-control-games` | ODE-to-RL conversion, DDQN, compact CTDE, node-SIPRS MAPPO |
+| 2 | `note1-cyber-control-games` | ODE-to-RL conversion, DDQN, compact CTDE, node-SIPS MAPPO |
 | 3 | `note2-pinn-pidl-cyber-control` | PINN/PIDL inverse learning and neural optimal control |
 
 Companion repository: https://github.com/LYang910920/network-control-differential-games

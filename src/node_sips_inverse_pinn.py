@@ -2,9 +2,9 @@
 Copyright (c) 2026 Luxing Yang.
 Licensed under the MIT License. See LICENSE in the repository root.
 
-Small inverse PINN for node-level SIPRS dynamics on a graph.
+Small inverse PINN for node-level SIPS dynamics on a graph.
 
-The example uses the canonical foundation SIPRS simulator to create synthetic
+The example uses the canonical foundation SIPS simulator to create synthetic
 truth, observes infected probabilities for only a subset of nodes/times, and
 learns hidden node states plus positive community-specific susceptibility,
 infectivity, and recovery multipliers.  The architecture is small: a time-only
@@ -22,11 +22,11 @@ from pathlib import Path
 import numpy as np
 
 from cybercontrol.network_models import (
-    NodeSIPRSParams,
-    community_correlated_node_siprs_params,
+    NodeSIPSParams,
+    community_correlated_node_sips_params,
     contiguous_community_index,
-    node_siprs_rhs_numpy,
-    node_siprs_rhs_torch,
+    node_sips_rhs_numpy,
+    node_sips_rhs_torch,
     normalize_adjacency,
 )
 from cybercontrol.numerics import project_compartments, rk4_integrate
@@ -34,8 +34,8 @@ from cybercontrol.torch_utils import MLP, positive, time_derivative, configure_t
 
 
 @dataclass
-class NodeSIPRSInverseConfig:
-    """Configuration for a tiny node-SIPRS inverse PINN smoke experiment."""
+class NodeSIPSInverseConfig:
+    """Configuration for a tiny node-SIPS inverse PINN smoke experiment."""
 
     nodes: int = 8
     communities: int = 2
@@ -44,8 +44,7 @@ class NodeSIPRSInverseConfig:
     beta_true: float = 0.82
     gamma_true: float = 0.18
     heterogeneity_strength: float = 0.35
-    omega_p: float = 0.03
-    omega_r: float = 0.02
+    omega: float = 0.03
     patch: float = 0.08
     clean: float = 0.04
     observed_nodes: int = 4
@@ -66,32 +65,31 @@ def toy_adjacency(nodes: int) -> np.ndarray:
     return normalize_adjacency(A)
 
 
-def generate_truth(cfg: NodeSIPRSInverseConfig):
-    """Generate heterogeneous node-SIPRS truth with fixed patch/clean controls."""
+def generate_truth(cfg: NodeSIPSInverseConfig):
+    """Generate heterogeneous node-SIPS truth with fixed patch/clean controls."""
 
     rng = np.random.default_rng(cfg.seed)
     A = toy_adjacency(cfg.nodes)
     community = contiguous_community_index(cfg.nodes, cfg.communities)
-    x0 = np.zeros((cfg.nodes, 4), dtype=np.float64)
+    x0 = np.zeros((cfg.nodes, 3), dtype=np.float64)
     x0[:, 0] = 1.0 - 0.04
     x0[:, 1] = 0.04
     seeds = rng.choice(cfg.nodes, size=max(1, cfg.nodes // 4), replace=False)
     x0[seeds, 1] += 0.08
     x0[seeds, 0] -= 0.08
     x0 = project_compartments(x0)
-    params = community_correlated_node_siprs_params(
+    params = community_correlated_node_sips_params(
         community,
         strength=cfg.heterogeneity_strength,
         beta=cfg.beta_true,
         gamma=cfg.gamma_true,
-        omega_p=cfg.omega_p,
-        omega_r=cfg.omega_r,
+        omega=cfg.omega,
     )
     t = np.linspace(0.0, cfg.horizon, cfg.grid)
 
     def rhs_flat(y, tau):
-        x = y.reshape(cfg.nodes, 4)
-        return node_siprs_rhs_numpy(x, A, params, patch=cfg.patch, clean=cfg.clean).reshape(-1)
+        x = y.reshape(cfg.nodes, 3)
+        return node_sips_rhs_numpy(x, A, params, patch=cfg.patch, clean=cfg.clean).reshape(-1)
 
     y = x0.reshape(-1)
     path = [x0.copy()]
@@ -102,23 +100,23 @@ def generate_truth(cfg: NodeSIPRSInverseConfig):
             t0=float(t[k]),
             dt=float(t[k + 1] - t[k]),
             substeps=2,
-            project=lambda z: project_compartments(z.reshape(cfg.nodes, 4)).reshape(-1),
+            project=lambda z: project_compartments(z.reshape(cfg.nodes, 3)).reshape(-1),
         )
-        path.append(y.reshape(cfg.nodes, 4).copy())
+        path.append(y.reshape(cfg.nodes, 3).copy())
     return t, np.asarray(path), A, community, params
 
 
-def rollout_known_params(cfg: NodeSIPRSInverseConfig, A: np.ndarray, x0: np.ndarray, params: NodeSIPRSParams) -> np.ndarray:
-    """Roll out a specified SIPRS parameterization on the tutorial grid."""
+def rollout_known_params(cfg: NodeSIPSInverseConfig, A: np.ndarray, x0: np.ndarray, params: NodeSIPSParams) -> np.ndarray:
+    """Roll out a specified SIPS parameterization on the tutorial grid."""
 
     t = np.linspace(0.0, cfg.horizon, cfg.grid)
 
     def rhs_flat(y, tau):
-        x = y.reshape(cfg.nodes, 4)
-        return node_siprs_rhs_numpy(x, A, params, patch=cfg.patch, clean=cfg.clean).reshape(-1)
+        x = y.reshape(cfg.nodes, 3)
+        return node_sips_rhs_numpy(x, A, params, patch=cfg.patch, clean=cfg.clean).reshape(-1)
 
     y = project_compartments(x0).reshape(-1)
-    path = [y.reshape(cfg.nodes, 4).copy()]
+    path = [y.reshape(cfg.nodes, 3).copy()]
     for k in range(cfg.grid - 1):
         y, _ = rk4_integrate(
             rhs_flat,
@@ -126,33 +124,33 @@ def rollout_known_params(cfg: NodeSIPRSInverseConfig, A: np.ndarray, x0: np.ndar
             t0=float(t[k]),
             dt=float(t[k + 1] - t[k]),
             substeps=2,
-            project=lambda z: project_compartments(z.reshape(cfg.nodes, 4)).reshape(-1),
+            project=lambda z: project_compartments(z.reshape(cfg.nodes, 3)).reshape(-1),
         )
-        path.append(y.reshape(cfg.nodes, 4).copy())
+        path.append(y.reshape(cfg.nodes, 3).copy())
     return np.asarray(path)
 
 
-class NodeSIPRSStateNet:
+class NodeSIPSStateNet:
     """Time-to-node-compartment network using a shared MLP block."""
 
     def __init__(self, torch, nodes: int, width: int, depth: int, device: str):
         self.torch = torch
         self.nodes = nodes
-        self.net = MLP(1, nodes * 4, width=width, depth=depth).to(device)
+        self.net = MLP(1, nodes * 3, width=width, depth=depth).to(device)
 
     def parameters(self):
         return self.net.parameters()
 
     def __call__(self, t):
-        raw = self.net(t).reshape(t.shape[0], self.nodes, 4)
+        raw = self.net(t).reshape(t.shape[0], self.nodes, 3)
         return self.torch.softmax(raw, dim=-1)
 
 
 def train(args):
-    """Train the small node-SIPRS inverse PINN and return diagnostics."""
+    """Train the small node-SIPS inverse PINN and return diagnostics."""
 
     torch, device, _ = configure_torch(seed=args.seed, device=args.device, threads=1)
-    cfg = NodeSIPRSInverseConfig(
+    cfg = NodeSIPSInverseConfig(
         nodes=args.nodes,
         communities=args.communities,
         grid=args.grid,
@@ -172,7 +170,7 @@ def train(args):
         cfg,
         A_np,
         x_np[0],
-        NodeSIPRSParams(beta=cfg.beta_true, gamma=cfg.gamma_true, omega_p=cfg.omega_p, omega_r=cfg.omega_r),
+        NodeSIPSParams(beta=cfg.beta_true, gamma=cfg.gamma_true, omega=cfg.omega),
     )
     homogeneous_misspec_state_mse = float(np.mean((homogeneous_path - x_np) ** 2))
     observed_I = x_np[np.ix_(data_idx, node_idx, [1])].squeeze(-1)
@@ -186,7 +184,7 @@ def train(args):
     x0 = torch.tensor(x_np[0], dtype=torch.float32, device=device)
     A_t = torch.tensor(A_np, dtype=torch.float32, device=device)
     community_t = torch.tensor(community_np, dtype=torch.long, device=device)
-    model = NodeSIPRSStateNet(torch, cfg.nodes, args.width, args.depth, device)
+    model = NodeSIPSStateNet(torch, cfg.nodes, args.width, args.depth, device)
     community_count = int(np.max(community_np)) + 1
     susceptibility_raw = torch.nn.Parameter(torch.zeros(community_count, device=device))
     infectivity_raw = torch.nn.Parameter(torch.zeros(community_count, device=device))
@@ -214,17 +212,16 @@ def train(args):
         x_f = model(t_f)
         flat = x_f.reshape(x_f.shape[0], -1)
         dxdt = time_derivative(flat, t_f).reshape_as(x_f)
-        params = NodeSIPRSParams(
+        params = NodeSIPSParams(
             beta=cfg.beta_true,
             susceptibility=susceptibility,
             infectivity=infectivity,
             gamma=gamma,
-            omega_p=cfg.omega_p,
-            omega_r=cfg.omega_r,
+            omega=cfg.omega,
         )
         rhs = torch.stack(
             [
-                node_siprs_rhs_torch(x_f[k], A_t, params, patch=cfg.patch, clean=cfg.clean)
+                node_sips_rhs_torch(x_f[k], A_t, params, patch=cfg.patch, clean=cfg.clean)
                 for k in range(x_f.shape[0])
             ],
             dim=0,
@@ -271,7 +268,7 @@ def train(args):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Small inverse PINN for canonical node-SIPRS graph dynamics.")
+    parser = argparse.ArgumentParser(description="Small inverse PINN for canonical node-SIPS graph dynamics.")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--nodes", type=int, default=8)
     parser.add_argument("--communities", type=int, default=2)

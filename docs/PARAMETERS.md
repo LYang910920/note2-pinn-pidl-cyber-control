@@ -10,7 +10,7 @@ Use this page before changing losses, networks, collocation points, or the cyber
 | Fast smoke check | `bash scripts/run_smoke_tests.sh` |
 | Rebuild figures | `python scripts/generate_figures.py` |
 | Run longer diagnostics | `python scripts/run_training_iterations.py` |
-| Run node-SIPRS inverse PINN smoke | `python src/node_siprs_inverse_pinn.py --smoke --device cpu` |
+| Run node-SIPS inverse PINN smoke | `python src/node_sips_inverse_pinn.py --smoke --device cpu` |
 | Run heavier GPU-oriented diagnostics | `python scripts/run_training_iterations.py --profile gpu` |
 
 ## Terms Used In This Repo
@@ -60,16 +60,16 @@ These are the values used by `python scripts/run_training_iterations.py`.
 | PMP-informed PINN | `iters=600`, `width=24`, `n_collocation=70`, `lr=1e-3`, `seed=24` | `A=10.0`, `B=1.0`, `AT=10.0`, `w_state=10.0`, `w_costate=1.0`, `w_stat=1.0`, `w_bc=10.0` |
 | Extended local diagnostic run | `iters=800`, `device=cpu`, `threads=1`; all four method diagnostics reduced their tracked losses and wrote comparison artifacts under ignored `artifacts/` | `python scripts/run_training_iterations.py --profile teaching --iters 800 --device cpu --threads 1` |
 
-## Node-SIPRS Inverse PINN Parameters
+## Node-SIPS Inverse PINN Parameters
 
-This smoke route is a graph/node bridge. It uses the Foundation SIPRS simulator to generate truth, observes only infected probabilities on a subset of nodes and times, and evaluates hidden-state recovery on held-out time points.
+This smoke route is a graph/node bridge. It uses the Foundation SIPS simulator to generate truth, observes only infected probabilities on a subset of nodes and times, and evaluates hidden-state recovery on held-out time points.
 
 | Parameter | Default |
 |---|---:|
 | graph nodes | `8` |
-| compartments | `[S,I,P,R]` |
+| compartments | `[S,I,P]` |
 | time horizon/grid | `T=6.0`, `grid=61` |
-| true rates | base `beta=0.82`, base `gamma=0.18`, `omega_p=0.03`, `omega_r=0.02`; susceptibility, infectivity, recovery, criticality and costs are community-correlated |
+| true rates | base `beta=0.82`, base `gamma=0.18`, `omega=0.03`; susceptibility, infectivity, recovery, criticality and costs are community-correlated |
 | communities / heterogeneity | `2` communities, heterogeneity strength `0.35` |
 | known controls | `patch=0.08`, `clean=0.04` |
 | sparse observations | `4` observed nodes, `14` observed time points, infected compartment only |
@@ -103,7 +103,7 @@ These are the standalone script defaults if you run each file directly without `
 | `src/pidl_unknown_mechanism.py` | `iters=5000`, `width=64`, `n_data=40`, `n_collocation=200`, `lr=1e-3`, `w_ic=10.0`, `w_res=1.0`, `w_corr=1e-3` |
 | `src/control_pinn_malware.py` | `iters=5000`, `T=20.0`, `width=64`, `n_collocation=200`, `lr=1e-3`, `beta=0.8`, `gamma=0.2`, `umax=1.0`, `A=10.0`, `B=1.0`, `AT=10.0` |
 | `src/pmp_informed_pinn_malware.py` | `iters=5000`, `T=20.0`, `width=64`, `n_collocation=200`, `lr=1e-3`, `beta=0.8`, `gamma=0.2`, `umax=1.0`, `A=10.0`, `B=1.0`, `AT=10.0` |
-| `src/node_siprs_inverse_pinn.py` | `iters=500`, `nodes=8`, `communities=2`, `grid=61`, `observed_nodes=4`, `observed_times=14`, `collocation=32`, `width=32`, `lr=1e-3` |
+| `src/node_sips_inverse_pinn.py` | `iters=500`, `nodes=8`, `communities=2`, `grid=61`, `observed_nodes=4`, `observed_times=14`, `collocation=32`, `width=32`, `lr=1e-3` |
 
 ## What To Change First
 
@@ -113,5 +113,5 @@ These are the standalone script defaults if you run each file directly without `
 | Learn a different missing mechanism | `src/pidl_unknown_mechanism.py::known_rhs`, `CorrectionNet` |
 | Add more controls or constraints | `src/control_pinn_malware.py::ControlNet`, `rhs` |
 | Adapt PMP conditions to a paper model | `src/pmp_informed_pinn_malware.py::f_state`, `hamiltonian` |
-| Move from aggregate to graph/node observations | `src/node_siprs_inverse_pinn.py::generate_truth`, `NodeSIPRSStateNet`, `train` |
+| Move from aggregate to graph/node observations | `src/node_sips_inverse_pinn.py::generate_truth`, `NodeSIPSStateNet`, `train` |
 | Change diagnostic run length or architecture | `scripts/run_training_iterations.py` |

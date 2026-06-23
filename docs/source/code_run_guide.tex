@@ -2,7 +2,7 @@
 \input{tutorial_style}
 
 \begin{document}
-\tutorialtitle{Code Running Guide}{How to Run and Extend the Note 2 Python Examples}{Installation, smoke tests, training diagnostics, outputs, and troubleshooting}{Companion to the PINN/PIDL cyber-control tutorial note}
+\tutorialtitle{Code Running Guide}{How to Run and Extend the Note 2 Python Examples}{Installation, smoke tests, training diagnostics, outputs, and troubleshooting}{Companion to the PINN/PIDL cyber-control guide}
 \tableofcontents
 \newpage
 \lhead{\small Note 2 Code Running Guide}
@@ -84,9 +84,9 @@ python src/control_pinn_malware.py --iters 1000
 \end{lstlisting}
 Expected output: objective proxy, state residual, initial-condition loss, and mean control intensity.
 
-\subsection{Heterogeneous node-SIPRS inverse PINN}
+\subsection{Heterogeneous node-SIPS inverse PINN}
 \begin{lstlisting}[style=pythonstyle]
-python src/node_siprs_inverse_pinn.py --smoke --device cpu
+python src/node_sips_inverse_pinn.py --smoke --device cpu
 \end{lstlisting}
 Expected output: held-out state MSE, held-out-node state MSE, homogeneous-misspecification rollout MSE, and community susceptibility, infectivity, and recovery RMSE. The smoke case fixes the base beta and learns a low-dimensional community-rate map rather than one global beta/gamma for heterogeneous truth.
 
@@ -134,7 +134,7 @@ File & What it shows \\
 \texttt{pidl\_}\newline\texttt{training\_history.csv} & Known-mechanism residual loss, correction regularization, and mean learned correction. \\
 \texttt{control\_pinn\_}\newline\texttt{training\_history.csv} & Objective, state residual, initial-condition loss, and mean control. \\
 \texttt{pmp\_informed\_pinn\_}\newline\texttt{training\_history.csv} & State, costate, stationarity, and boundary residuals. \\
-\texttt{node\_siprs\_inverse\_}\newline\texttt{history.csv} & Held-out node-state error, mass error, and community-rate RMSE for the heterogeneous graph inverse-PINN smoke route. \\
+\texttt{node\_sips\_inverse\_}\newline\texttt{history.csv} & Held-out node-state error, mass error, and community-rate RMSE for the heterogeneous graph inverse-PINN smoke route. \\
 \texttt{baseline\_comparison\_}\newline\texttt{metrics.csv} & Topic-specific baseline metrics for inverse PINN, PIDL, and controlled malware mitigation. \\
 \texttt{training\_iteration\_}\newline\texttt{diagnostics.png} & Four-panel comparison of the main loss and residual signals. \\
 \texttt{baseline\_comparison.png} & Learned methods compared with sparse interpolation, wrong-parameter SIR, known-SIR-only dynamics, and no/fixed-control baselines. \\
