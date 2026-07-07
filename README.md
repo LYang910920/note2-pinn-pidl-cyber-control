@@ -1,14 +1,18 @@
-# Physics-Informed Cyber Control
+# Network Control Tutorial Family: Note 2
 
-Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
+**Physics-Informed Cyber Control**
+
+Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the Network Control Tutorial Family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
 
 ## Repository Family
 
-| Order | Repository | Role |
-|---:|---|---|
-| 0 | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Foundation notation, shared `cybercontrol` package, continuous-time, impulse, and continuous-impulsive examples, degree-vs-node scalability, and reference smoke runs. |
-| 1 | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPS MAPPO, and larger node-SIPS attacker-defender benchmarks. |
-| 2 | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPS inverse learning. |
+| Order | Family name | Current repository | Role |
+|---:|---|---|---|
+| 0 | Foundation: Network Control and Differential Games | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Shared notation, `cybercontrol`, continuous-time, impulse, and continuous-impulsive examples, degree-vs-node scalability, and reference smoke runs. |
+| 1 | Note 1: Cyber Control and Game Learning | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPS MAPPO, and larger node-SIPS attacker-defender benchmarks. |
+| 2 | Note 2: Physics-Informed Cyber Control | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPS inverse learning. |
+
+The GitHub repository slugs are kept stable for existing links. The family names above are the display names used in the PDFs and documentation.
 
 ## 5-Minute Quick Start
 
