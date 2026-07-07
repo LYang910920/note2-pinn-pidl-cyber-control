@@ -564,36 +564,69 @@ def numeric(row: dict, key: str) -> float:
     return float(value) if value != "" else float("nan")
 
 
-def annotate_bars(ax, bars, values, fmt="{:.2g}") -> None:
+def annotate_bars(ax, bars, values, fmt="{:.2g}", *, horizontal: bool = False) -> None:
     for bar, value in zip(bars, values):
         if np.isnan(value):
             continue
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height(),
-            fmt.format(value),
-            ha="center",
-            va="bottom",
-            fontsize=7.5,
-            rotation=0,
-        )
+        if horizontal:
+            ax.text(
+                bar.get_width(),
+                bar.get_y() + bar.get_height() / 2,
+                f" {fmt.format(value)}",
+                ha="left",
+                va="center",
+                fontsize=7.3,
+            )
+        else:
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height(),
+                fmt.format(value),
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+                rotation=0,
+            )
 
 
-def plot_metric_bars(ax, rows: list[dict], metric: str, panel: str, ylabel: str, log: bool = False) -> None:
-    labels = [textwrap.fill(row["plot_label"], 12) for row in rows]
+def plot_metric_bars(
+    ax,
+    rows: list[dict],
+    metric: str,
+    panel: str,
+    ylabel: str,
+    log: bool = False,
+    *,
+    horizontal: bool = False,
+) -> None:
+    labels = [textwrap.fill(row["plot_label"], 12 if not horizontal else 16) for row in rows]
     values = [numeric(row, metric) for row in rows]
     colors = ["#2f5d8c", "#db8f34", "#4f9d69", "#8a5fbf", "#c94c4c", "#4c6f79"][: len(rows)]
-    bars = ax.bar(labels, values, color=colors, edgecolor="#222222", linewidth=0.6)
+    positions = np.arange(len(labels))
+    if horizontal:
+        bars = ax.barh(positions, values, color=colors, edgecolor="#222222", linewidth=0.6)
+        ax.set_yticks(positions, labels)
+        ax.invert_yaxis()
+        finite = [value for value in values if not np.isnan(value)]
+        if finite:
+            ax.set_xlim(0, max(finite) * 1.16)
+    else:
+        bars = ax.bar(positions, values, color=colors, edgecolor="#222222", linewidth=0.6)
+        ax.set_xticks(positions, labels)
     if log:
         positive = [value for value in values if value > 0 and not np.isnan(value)]
         if positive:
             ax.set_yscale("log")
             ax.set_ylim(max(min(positive) * 0.35, 1e-7), max(positive) * 4.0)
-    annotate_bars(ax, bars, values, fmt="{:.2e}" if log else "{:.2f}")
-    panel_label(ax, panel)
-    ax.set_ylabel(ylabel)
+    annotate_bars(ax, bars, values, fmt="{:.2e}" if log else "{:.2f}", horizontal=horizontal)
+    panel_label(ax, panel, x=0.0, y=1.03)
+    if horizontal:
+        ax.set_xlabel(ylabel)
+    else:
+        ax.set_ylabel(ylabel)
     ax.tick_params(axis="x", labelsize=8)
-    ax.grid(axis="y", alpha=0.25)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(axis="x" if horizontal else "y", alpha=0.25)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
 
@@ -605,7 +638,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
     control_rows = [row for row in rows if row["topic"] == "Controlled malware mitigation"]
 
     with publication_style():
-        fig, axes = plt.subplots(2, 2, figsize=(7.16, 5.2))
+        fig, axes = plt.subplots(2, 2, figsize=(8.4, 6.2))
     plot_metric_bars(
         axes[0, 0],
         inverse_rows,
@@ -629,6 +662,7 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         "(c) rollout objective",
         "Objective: infected burden + control cost",
         log=False,
+        horizontal=True,
     )
     plot_metric_bars(
         axes[1, 1],
@@ -637,14 +671,14 @@ def plot_baseline_comparison(output_path: Path, rows: list[dict]) -> None:
         "(d) epidemic burden",
         "Integral of compromised devices",
         log=False,
+        horizontal=True,
     )
     caption = (
-        "Caption: inverse PINN is compared with sparse interpolation and a wrong-parameter SIR rollout, meaning the SIR equation is simulated with inaccurate beta/gamma; "
-        "PIDL is compared with the known SIR model without the missing term; control methods are evaluated "
-        "by rolling the original controlled malware model forward under each policy. Lower bars are better."
+        "Inverse panels compare state-error baselines. Control panels roll the same malware model forward under each policy. "
+        "Lower values are better."
     )
-    add_caption(fig, caption, width=150, y=0.01)
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    add_caption(fig, caption, width=120, y=0.018, fontsize=7.5)
+    fig.tight_layout(rect=(0.02, 0.09, 1, 1), h_pad=1.5, w_pad=2.0)
     output_path.parent.mkdir(exist_ok=True)
     save_publication_figure(
         fig,
