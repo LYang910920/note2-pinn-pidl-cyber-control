@@ -234,8 +234,8 @@ def plot_training_diagnostics(output_path: Path, histories: dict[str, list[dict]
     panel_label(axes[1], "(b) PIDL missing mechanism")
     axes[1].set_ylabel("Loss (log scale)")
     ax_pidl = axes[1].twinx()
-    ax_pidl.plot(pidl_it, [r["mean_correction"] for r in histories["pidl"]], color="#e45756", label="mean learned correction")
-    ax_pidl.set_ylabel("Mean learned correction")
+    ax_pidl.plot(pidl_it, [r["mean_correction"] for r in histories["pidl"]], color="#e45756", label="mean learned RHS correction")
+    ax_pidl.set_ylabel("Mean RHS correction")
 
     control_it = [r["iteration"] for r in histories["control"]]
     axes[2].semilogy(control_it, [r["loss"] for r in histories["control"]], label="total loss")
@@ -771,7 +771,7 @@ Profile used: `{profile["name"]}` with `{profile["iters"]}` optimizer iterations
 | Experiment | Main question | Key diagnostics |
 |---|---|---|
 | Sparse-data inverse PINN | Can sparse infected observations recover hidden S/I/R states and beta/gamma? | total loss, data loss, ODE residual, learned beta/gamma |
-| PIDL missing mechanism | Can a small correction network represent the missing nonlinear propagation term? | residual loss, correction regularizer, mean learned correction |
+| PIDL missing mechanism | Can a small correction network represent the missing nonlinear propagation term? | residual loss, correction regularizer, mean learned RHS correction |
 | Direct control PINN | Can state/control networks reduce malware while satisfying the ODE? | objective, state residual, initial-condition loss, mean control |
 | PMP-informed PINN | Can state, costate, and control networks satisfy PMP optimality conditions? | state residual, costate residual, stationarity loss, boundary loss |
 

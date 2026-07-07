@@ -73,8 +73,8 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
     style_axis(axes[0], ylabel="Population share", legend=True)
 
     axes[1].plot(t[:, 0], correction, color="black", label="q S I^2")
-    panel_label(axes[1], "(b) unknown-mechanism target")
-    style_axis(axes[1], xlabel="Time", ylabel="Missing term", legend=True)
+    panel_label(axes[1], "(b) unknown RHS correction q S I^2")
+    style_axis(axes[1], xlabel="Time", ylabel="RHS correction magnitude", legend=True)
     fig.tight_layout()
     save_publication_figure(
         fig,
@@ -82,7 +82,7 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
         metadata={
             "model": "PIDL missing-mechanism example",
             "unknown_term": "q S I^2",
-            "caption_hint": "Known SIR physics plus a synthetic missing nonlinear correction.",
+            "caption_hint": "Known SIR physics plus a synthetic missing RHS correction q S I^2.",
         },
     )
     plt.close(fig)
