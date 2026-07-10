@@ -1,115 +1,117 @@
-# Network Control Tutorial Family: Note 2
+# Physics-Informed Cyber Control
 
-**Physics-Informed Cyber Control**
+Executable material for inverse PINN, PIDL, direct neural control,
+PMP-informed learning and heterogeneous node-SIPS inference. Shared ODE/SIPS
+equations, graph operations, neural blocks, devices, metrics and plotting come
+from the foundation package `cybercontrol`.
 
-Executable code for PINNs, PIDL, neural optimal control, and PMP-informed residual learning in cyber-control models. This is the third repository in the Network Control Tutorial Family. It uses the foundation package `cybercontrol` for shared ODEs, graph SIPS dynamics, Torch helper blocks, integration, plotting, and CSV utilities.
+The examples are synthetic research templates. A small residual is not evidence
+of parameter identifiability, global optimality or deployment safety.
 
 ## Repository Family
 
-| Order | Family name | Current repository | Role |
-|---:|---|---|---|
-| 0 | Foundation: Network Control and Differential Games | [network-control-differential-games](https://github.com/LYang910920/network-control-differential-games) | Shared notation, `cybercontrol`, continuous-time, impulse, and continuous-impulsive examples, degree-vs-node scalability, and reference smoke runs. |
-| 1 | Note 1: Cyber Control and Game Learning | [note1-cyber-control-games](https://github.com/LYang910920/note1-cyber-control-games) | FBSM baselines, sampled-data MDP conversion, DDQN defense, CTDE, cooperative node-SIPS MAPPO, and larger node-SIPS attacker-defender benchmarks. |
-| 2 | Note 2: Physics-Informed Cyber Control | `note2-pinn-pidl-cyber-control` | Inverse PINN, PIDL, direct neural control, PMP-informed PINN, and heterogeneous node-SIPS inverse learning. |
+![Repository family](docs/assets/diagrams/repository_family.png)
 
-The GitHub repository slugs are kept stable for existing links. The family names above are the display names used in the PDFs and documentation.
+| Order | Repository | Responsibility |
+|---:|---|---|
+| 0 | [Network Control and Differential Games](https://github.com/LYang910920/network-control-differential-games) | Shared equations, heterogeneity, graphs, numerics, FBSM, neural blocks and plotting |
+| 1 | [Cyber Control and Game Learning](https://github.com/LYang910920/note1-cyber-control-games) | Environments, DDQN/PPO, CTDE, MAPPO and game evaluation |
+| 2 | **Physics-Informed Cyber Control** | Inverse PINN, PIDL, neural control and PMP-informed learning |
 
 ## 5-Minute Quick Start
+
+Python 3.10 or newer is required. With sibling checkouts:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e "../network-control-differential-games[torch,dev]"
-python -m pip install -e ".[dev]"
-python run_all.py smoke
-python run_all.py figures
+python -m pip install -e "../network-control-differential-games[torch]"
+python -m pip install -e ".[dev]" --no-deps
+python -m cyberpinn smoke
+python -m pytest -q
 ```
 
-If this repository is cloned without the sibling foundation repo:
+After the foundation `0.2.0` changes are on `main`, a standalone checkout can
+use `python -m pip install -e ".[dev]"`.
 
 ```bash
-python -m pip install "cybercontrol[torch] @ git+https://github.com/LYang910920/network-control-differential-games.git"
-python -m pip install -e ".[dev]"
-```
-
-For bounded diagnostics and baseline comparisons:
-
-```bash
-python run_all.py train
+python -m cyberpinn medium --device auto --output-dir artifacts/medium
+python -m cyberpinn figures
+python -m cyberpinn docs
+python -m cyberpinn all
 ```
 
 ## Code Map
 
 | Need | Start here |
 |---|---|
-| Tutorial PDF | `docs/note2_pinn_pidl_cyber_control.pdf` |
-| Run and implementation guide | `docs/code_run_guide.pdf`, `docs/implementation_companion.pdf` |
-| Parameters and neural hyperparameters | `docs/PARAMETERS.md` |
-| Paper workflow and extensions | `docs/PAPER_WORKFLOW.md`, `docs/EXTENDING.md` |
-| Inverse PINN | `src/inverse_pinn_sir_malware.py` |
-| PIDL missing-mechanism example | `src/pidl_unknown_mechanism.py` |
-| Neural control and PMP-informed PINN | `src/control_pinn_malware.py`, `src/pmp_informed_pinn_malware.py` |
-| Heterogeneous node-SIPS inverse PINN | `src/node_sips_inverse_pinn.py` |
-| Static figures and bounded diagnostics | `scripts/generate_figures.py`, `scripts/run_training_iterations.py` |
-
-## Capability Status
-
-| Capability | API / file | Command | Metrics | Validation status |
-|---|---|---|---|---|
-| Heterogeneous node-SIPS inverse PINN | `src/node_sips_inverse_pinn.py` | `python run_all.py node-inverse --output-csv artifacts/extended_validation/node_inverse.csv` | loss, residual loss, held-out state MSE, held-out-node MSE, mass error | community-specific susceptibility, infectivity, and gamma |
-| Sparse/noisy observations | `NodeSIPSInverseConfig` | add `--noise`, `--observed-nodes`, `--observed-times` | data loss, held-out-time/node errors | observes infected probability for selected nodes/times |
-| Homogeneous misspecification comparison | `rollout_known_params` | same command | homogeneous-misspecification state MSE | compares heterogeneous truth against global-rate rollout |
-| Identifiability limits | `docs/EXTENDING.md`, `docs/PARAMETERS.md` | documentation | rate RMSE and residual checks | claims remain limited to the configured graph/profile |
+| Main PDF | [`docs/note2_pinn_pidl_cyber_control.pdf`](docs/note2_pinn_pidl_cyber_control.pdf) |
+| Tasks, losses and architectures | [`docs/METHODS_AND_API.md`](docs/METHODS_AND_API.md) |
+| Commands and experiment record | [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) |
+| Paper workflow | [`docs/FROM_MODEL_TO_PAPER.md`](docs/FROM_MODEL_TO_PAPER.md) |
+| Public package | [`src/cyberpinn/`](src/cyberpinn/) |
+| Inverse PINN and PIDL | [`inverse.py`](src/cyberpinn/inverse.py), [`pidl.py`](src/cyberpinn/pidl.py) |
+| Neural control | [`control.py`](src/cyberpinn/control.py), [`pmp.py`](src/cyberpinn/pmp.py) |
+| Heterogeneous SIPS data problem | [`src/cyberpinn/node_problem.py`](src/cyberpinn/node_problem.py) |
+| Heterogeneous node inverse | [`src/cyberpinn/node_inverse.py`](src/cyberpinn/node_inverse.py) |
+| Typed hyperparameters | [`src/cyberpinn/configs.py`](src/cyberpinn/configs.py) |
+| Shared architectures | [`src/cyberpinn/architectures.py`](src/cyberpinn/architectures.py), `cybercontrol.nn` |
+| Literature evidence | [`docs/literature/literature_matrix.csv`](docs/literature/literature_matrix.csv) |
 
 ## Representative Experiments
 
-The inverse PINN starts from sparse infected-state observations and learns hidden state curves plus propagation parameters under ODE residual constraints.
+The inverse PINN separates sparse observations from collocation points and
+evaluates hidden states and parameters against an independent ODE solution.
 
-![Inverse PINN sparse-data setup](docs/assets/inverse_pinn_sparse_data.png)
+![PINN loss assembly](docs/assets/diagrams/pinn_loss.png)
 
-The PIDL example keeps the known SIR mechanism explicit and uses a correction network for the synthetic missing nonlinear term.
+The heterogeneous SIPS estimator compares dense and factorized node-time
+architectures at a matched parameter budget. It reports held-out times,
+unobserved nodes, an unseen node count and a homogeneous misspecification
+baseline.
 
-![PIDL missing nonlinear mechanism](docs/assets/pidl_missing_mechanism.png)
+![Node-time encoder-decoder](docs/assets/diagrams/node_time_encoder_decoder.png)
 
-The baseline comparison evaluates learned methods against method-specific alternatives. A rollout means the original ODE or graph simulator is run forward under a parameter set or control policy. The graph inverse PINN uses heterogeneous community-specific susceptibility, infectivity, and recovery rather than fitting one global beta/gamma to heterogeneous truth; it also logs a homogeneous-misspecification rollout and held-out-node state error.
+The aggregate experiment suite compares inverse PINN, PIDL, direct neural
+control and PMP-informed residual learning using method-specific diagnostics.
+Training losses are not compared as if their scales were interchangeable.
 
-![Baseline comparison for learned methods](docs/assets/baseline_comparison.png)
+![Method baseline comparison](docs/assets/baseline_comparison.png)
+
+The node inverse model fixes the susceptibility-infectivity scale gauge and
+reports effective transmission-matrix error. State recovery may be accurate even
+when individual rates remain weakly identifiable.
 
 ## Extension Route
 
-1. Read `docs/PARAMETERS.md` before changing collocation points, width/depth, loss weights, or training length.
-2. Pick one method file and preserve the meaning of its logged loss terms.
-3. Keep common ODE, Torch, graph, plotting, and CSV helpers in `cybercontrol`; add Note 2 code only for PINN/PIDL method logic.
-4. Run `python run_all.py smoke` after each structural change.
-5. Use `python run_all.py train` for bounded diagnostics. Outputs go to ignored `artifacts/experiments/` and `artifacts/figures/`.
+1. Define observations, unknowns and identifiability before building a network.
+2. Reserve held-out times, nodes, trajectories or graphs before training.
+3. Compare homogeneous misspecification and classical/known-mechanism baselines.
+4. Log each loss component and evaluate an independent simulator rollout.
+5. Sweep noise, sparsity, heterogeneity, graph and architecture choices.
+6. Keep shared equations and neural blocks in `cybercontrol`.
+
+The [methods guide](docs/METHODS_AND_API.md) lists exact defaults, tensor shapes,
+gauge semantics and the old-to-new import map.
 
 ## Validation
 
 ```bash
 python -m compileall -q src tests scripts
+python -m ruff check src tests scripts
 python -m pytest -q
-python run_all.py smoke
-python run_all.py figures
+python -m cyberpinn smoke
+python -m cyberpinn figures
+python -m cyberpinn docs
 ```
 
-Extended local diagnostic run:
-
-```bash
-python run_all.py train --profile teaching --iters 800 --device cpu --threads 1
-python run_all.py node-inverse --device cpu --output-csv artifacts/extended_validation/node_inverse.csv
-```
-
-`node-inverse --device auto` uses CUDA when available. On MPS-only machines it
-falls back to CPU for this residual-heavy inverse-PINN runner, because current
-PyTorch/MPS builds can abort inside the higher-order residual slicing workload.
-Use `--device mps` only for backend experiments.
-
-In this run, inverse PINN, PIDL, direct-control PINN, and PMP-informed diagnostics all reduced their tracked losses. The baseline comparison selected the inverse PINN for sparse-data state recovery, PIDL for the missing-mechanism case, and rollout-optimized neural control for the control objective.
-The audited node-SIPS inverse run reduced held-out state MSE to about `6.10e-3`, slightly below the matched homogeneous rollout error of about `6.81e-3`; rate recovery remains less identifiable than state recovery in this small time-only network.
-
-GitHub Actions runs the smoke tests on pushes and pull requests. The examples are teaching baselines and need additional seed, noise, identifiability, and uncertainty studies before paper-level claims.
+The three-seed noise/sparsity/architecture profile is documented in
+[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md).
 
 ## Citation and License
 
-See `LICENSE` and `NOTICE.md`. When using the repository in a paper or report, cite the related publication and the foundation repository when its shared package is used.
+Code, documentation and generated figures are MIT-licensed unless a file says
+otherwise. See [`LICENSE`](LICENSE) and [`NOTICE.md`](NOTICE.md). Cite the
+foundation repository when using `cybercontrol` and cite the relevant method
+source recorded in `docs/literature/`.

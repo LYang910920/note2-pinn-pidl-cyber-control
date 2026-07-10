@@ -2,14 +2,27 @@
 \documentclass[11pt,a4paper]{article}
 \input{tutorial_style}
 \begin{document}
-\tutorialtitle{Note 2: Physics-Informed Cyber Control}{PINN/PIDL for Propagation, Parameter Learning, and Optimal Control}{A self-contained tutorial with implementation details, evaluation guidance, and Python examples}{Prepared for advanced research discussion and supervision}
+\tutorialtitle{Physics-Informed Cyber Control}{PINN/PIDL for Propagation, Parameter Learning, and Optimal Control}{A research guide to residual construction, inverse problems, neural control, identifiability, and reproducible evaluation}{Companion volume 2: physics-informed methods}
 \tableofcontents
 \newpage
+\lhead{\small\sffamily Note 2: Physics-Informed Cyber Control}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.94\linewidth]{../assets/diagrams/repository_family.pdf}
+\caption{The foundation package supplies the common dynamics and numerical infrastructure. Note 1 owns game-learning methods; this note owns PINN/PIDL and neural-control methods.}
+\label{fig:repository-family}
+\end{figure}
+
 \section*{Reading Guide}
 \addcontentsline{toc}{section}{Reading Guide}
-This guide is self-contained. It does not assume that the reader has read a separate note on reinforcement learning, differential games, or Pontryagin's Maximum Principle. The emphasis is \emph{Physics-Informed Neural Networks} (PINNs) and the broader family of \emph{Physics-Informed Deep Learning} (PIDL) methods for cyber propagation systems. PINN is treated as the core method; PIDL is introduced as the larger design philosophy that combines neural networks, differential-equation knowledge, partial observations, priors, simulators, and sometimes optimality or game-theoretic conditions.
+This guide develops \emph{Physics-Informed Neural Networks} (PINNs) and the
+broader family of \emph{Physics-Informed Deep Learning} (PIDL) methods for
+cyber propagation systems. It begins with the differential-equation residual,
+then treats inverse parameter estimation, neural control, PMP-informed
+training, model correction and validation. The required PMP notation is
+summarized here; full PMP/FBSM derivations remain in the foundation volume.
 
-The note answers four practical questions.
+The note answers five practical questions.
 \begin{enumerate}[leftmargin=2em]
     \item What is a PINN and what problem does it solve?
     \item How can a PINN learn unknown propagation parameters from sparse or noisy data?
@@ -18,7 +31,10 @@ The note answers four practical questions.
     \item What are the implementation choices that make a PINN work in practice: network outputs, collocation points, automatic differentiation, constrained parameters, loss balancing, and validation?
 \end{enumerate}
 
-The note deliberately separates \emph{modeling}, \emph{learning}, \emph{control}, and \emph{validation}. This is important because many papers mix these concepts. A clear PINN study should state: the differential equation model, the available data, the unknown quantities, the neural networks used to approximate them, the residuals included in the loss, and the criteria used to validate the result.
+Modeling, estimation, control and validation are treated as separate stages.
+A PINN study should state the differential equation, available observations,
+unknown quantities, neural parameterization, residual terms and validation
+criteria before interpreting learned parameters or controls.
 
 \begin{takeaway}
 A PINN is not merely a neural network fitted to data. It is a neural approximation whose training loss includes residuals of differential equations, boundary/initial conditions, conservation laws, and sometimes optimality conditions. In cyber propagation research, this allows us to combine limited data with prior mechanistic knowledge about spreading dynamics.
@@ -174,21 +190,12 @@ where
 \end{align}
 Here $w_d,w_f,w_0$ are loss weights. Their values matter: if $w_f$ is too small, the network may fit data but violate the model; if $w_f$ is too large, the network may satisfy the ODE but ignore noisy observations. Loss imbalance is a known difficulty for PINNs \cite{wang2021lossimbalance,krishnapriyan2021pinnfailures}.
 
-\begin{center}
-\begin{tikzpicture}[node distance=0.75cm,>=Latex,scale=0.82,transform shape]
-\tikzstyle{box}=[rectangle,rounded corners,draw=black,align=center,minimum width=2.7cm,minimum height=0.8cm]
-\node[box] (input) {Input time\\$t$};
-\node[box,right=of input] (nn) {Neural network\\$x_\phi(t)$};
-\node[box,right=of nn] (ad) {Automatic\\differentiation};
-\node[box,right=of ad] (res) {ODE residual\\$\dot{x}_\phi-f(x_\phi)$};
-\node[box,below=of nn] (loss) {Loss = data + residual + IC/BC};
-\draw[->] (input) -- (nn);
-\draw[->] (nn) -- (ad);
-\draw[->] (ad) -- (res);
-\draw[->] (nn) -- (loss);
-\draw[->] (res) -- (loss);
-\end{tikzpicture}
-\end{center}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.95\linewidth]{../assets/diagrams/pinn_loss.pdf}
+\caption{PINN computation graph. Observations constrain selected outputs, while automatic differentiation supplies the derivatives used in the governing-equation residual. Validation remains separate from training loss.}
+\label{fig:pinn-loss}
+\end{figure}
 
 \begin{takeaway}
 A PINN uses collocation points to turn a differential equation into a training signal. The network does not need data at every collocation point. It only needs the equation residual there.
@@ -396,6 +403,55 @@ No reliable data & PINN is mainly a solver under assumptions & Report sensitivit
     \item Move to real or high-fidelity simulation data only after the synthetic test works.
 \end{enumerate}
 
+\subsection{Heterogeneous node-SIPS inverse problem}
+An aggregate inverse model can be misspecified when infection and recovery rates
+vary across assets or communities. For node $i$, the canonical SIPS state is
+$x_i=[S_i,I_i,P_i]$ with $S_i+I_i+P_i=1$. Define
+\begin{equation}
+\lambda_i(t)=\beta_i s_i\sum_j A_{ij}q_j I_j(t),
+\end{equation}
+where $s_i$ is susceptibility and $q_i$ is infectivity. With known patch and
+cleaning inputs $u_i^p,u_i^c$, the residual model is
+\begin{align}
+\dot S_i&=-\lambda_iS_i-\bar u_i^pS_i+\omega_iP_i,\\
+\dot I_i&=\lambda_iS_i-(\gamma_i+\bar u_i^c)I_i,\\
+\dot P_i&=\bar u_i^pS_i+(\gamma_i+\bar u_i^c)I_i-\omega_iP_i,
+\end{align}
+where $\bar u_i^p$ and $\bar u_i^c$ include the configured efficacy and bound.
+The three right-hand sides sum to zero at every node.
+
+The implementation estimates positive community-specific
+$(s_g,q_g,\gamma_g)$ from sparse infected-state observations. It fixes the
+geometric mean of infectivity to one,
+\begin{equation}
+\exp\left(\frac{1}{G}\sum_{g=1}^{G}\log q_g\right)=1,
+\end{equation}
+because $s_i$ and $q_j$ otherwise have a multiplicative gauge: multiplying all
+$s_i$ by $c$ and dividing all $q_j$ by $c$ leaves $\lambda_i$ unchanged. The
+primary parameter diagnostic is therefore the effective transmission matrix
+\begin{equation}
+K_{ij}=\beta_i s_i A_{ij}q_j,
+\end{equation}
+not two independently interpreted susceptibility and infectivity estimates.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.94\linewidth]{../assets/diagrams/node_time_encoder_decoder.pdf}
+\caption{Matched-budget state architectures. The dense baseline maps time to a fixed $N\times3$ output. The factorized model combines a shared time embedding with node features and an optional graph encoder, then applies a shared three-state decoder.}
+\label{fig:node-time-architecture}
+\end{figure}
+
+The factorized model can be evaluated on an unseen graph size because its
+decoder is shared across nodes. Evaluation separates observed-time fit from
+held-out times, unobserved nodes and an unseen graph size. It also reports
+conservation error, residual error, effective-transmission RMSE and the error
+of a matched-mean homogeneous model. These tests do not remove
+non-identifiability; they expose whether the available observations support
+the proposed heterogeneous interpretation. Related physics-informed
+point-cloud work motivates shared geometric encoders on irregular domains
+\cite{kashefi2022pointnet}, but its fluid-mechanics results are not transferred
+as performance claims for cyber graphs.
+
 \section{PINN for Optimal Cyber Control}
 
 Parameter learning answers ``what is the system?'' Optimal control answers ``what should the defender do?'' Consider
@@ -460,6 +516,21 @@ The components are
     \mathcal{L}_{stationarity} &= \frac{1}{N_f}\sum_j\norm{\nabla_uH(\hat{x},\hat{u},\hat{\lambda},t_j)}^2,\\
     \mathcal{L}_{boundary} &= \norm{\hat{x}(0)-x_0}^2+\norm{\hat{\lambda}(T)-\nabla_x\Phi(\hat{x}(T))}^2.
 \end{align}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.94\linewidth]{../assets/diagrams/pmp_informed_pinn.pdf}
+\caption{PMP-informed PINN structure. State, costate and bounded-control networks are coupled through state, adjoint, stationarity and endpoint residuals; an independent rollout is still required to evaluate the candidate control.}
+\label{fig:pmp-informed-pinn}
+\end{figure}
+
+Physics-informed control studies have used both residual-constrained
+optimization and neural control models \cite{mowlavi2023control,antonelo2024pinc}.
+Formal-guarantee methods such as LyZNet address a different validation question
+and require assumptions beyond small training residuals \cite{liu2024lyznet}.
+For constrained general-sum games, the Pontryagin neural operator provides a
+recent operator-learning direction \cite{zhang2024pno}; this note does not claim
+that its compact examples reproduce that algorithm.
 
 \subsection{Example: PMP for SIR malware control}
 For
@@ -546,7 +617,7 @@ If almost no data are available, use PINNs primarily as a \emph{physics-constrai
 Avoid claiming that a PINN has ``discovered'' cyber propagation parameters from almost no data. A more accurate claim is that the PINN computes trajectories or controls consistent with the assumed model and parameter priors.
 \end{warningbox}
 
-\section{Game-Aware PINNs: Minimal Self-Contained Treatment}
+\section{Game-Aware PINNs: Essential Formulation}
 
 Although this note is focused on PINNs, some cyber problems involve attackers and defenders. A two-player continuous-time game can be written as
 \begin{equation}
@@ -710,17 +781,12 @@ Step & Question & Output \\
 \bottomrule
 \end{longtable}
 
-\begin{center}
-\begin{tikzpicture}[node distance=0.6cm,>=Latex,scale=0.83,transform shape]
-\tikzstyle{box}=[rectangle,rounded corners,draw=black,align=center,minimum width=2.2cm,minimum height=0.7cm]
-\node[box] (m) {Cyber\\model};
-\node[box,right=of m] (d) {Data and\\unknowns};
-\node[box,right=of d] (n) {Network\\outputs};
-\node[box,right=of n] (l) {PINN\\loss};
-\node[box,right=of l] (v) {Validation};
-\draw[->] (m)--(d);\draw[->] (d)--(n);\draw[->] (n)--(l);\draw[->] (l)--(v);
-\end{tikzpicture}
-\end{center}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.95\linewidth]{../assets/diagrams/model_to_paper.pdf}
+\caption{From model statement to reproducible evidence. For PINN/PIDL studies, the method block must specify observations, unknowns, network outputs and every residual term; the validation block must include held-out and baseline tests.}
+\label{fig:model-to-paper}
+\end{figure}
 
 This translation is especially important when the PINN is used for optimal control. The network is not solving an abstract machine learning task; it is solving a constrained dynamical problem. Every loss term should correspond to a modeling statement.
 
@@ -1166,18 +1232,26 @@ A complete PINN study should report the following.
 \newpage
 
 \section{Python Implementation Map}
-The companion code folder contains executable examples for the main PINN/PIDL tasks in this note.  The examples are designed to be readable and extendable.
+The package exposes one runner, \texttt{python -m cyberpinn}, and importable
+modules for each method. Shared neural blocks, SIR/SIPS equations, numerical
+integration, device selection and metrics come from \texttt{cybercontrol}.
 \begin{longtable}{p{0.30\textwidth}p{0.60\textwidth}}
 \toprule
-Python file & PINN/PIDL task \\
+Package module & PINN/PIDL task \\
 \midrule
-\texttt{inverse\_pinn\_sir\_}\newline\texttt{malware.py} & inverse PINN: learn hidden states and unknown SIR parameters from sparse infection observations. \\
-\texttt{pidl\_unknown\_}\newline\texttt{mechanism.py} & PIDL correction: combine known SIR dynamics with a learned missing transfer term. \\
-\texttt{control\_pinn\_}\newline\texttt{malware.py} & direct neural-control PINN: train state and control networks by objective plus residual loss. \\
-\texttt{pmp\_informed\_pinn\_}\newline\texttt{malware.py} & PMP-informed PINN: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
+\texttt{cyberpinn.inverse} & inverse PINN for aggregate SIR states and rates. \\
+\texttt{cyberpinn.node\_problem} & heterogeneous SIPS truth, sparse observation subsets and matched homogeneous rollout. \\
+\texttt{cyberpinn.node\_inverse} & dense and factorized inverse-PINN training and held-out diagnostics. \\
+\texttt{cyberpinn.pidl} & known SIR dynamics plus a regularized learned correction. \\
+\texttt{cyberpinn.control} & direct neural-control optimization with bounded open-loop control. \\
+\texttt{cyberpinn.pmp} & state, costate and control networks with PMP residuals. \\
+\texttt{cyberpinn.architectures} & matched-budget dense and factorized node-time networks. \\
 \bottomrule
 \end{longtable}
-The separate running guide explains the exact commands, smoke tests, and troubleshooting steps.
+Use \texttt{python -m cyberpinn smoke} for a fast check and
+\texttt{python -m cyberpinn medium --device auto} for the documented
+three-seed architecture and observation-regime study. Exact configurations and
+artifact fields are listed in \texttt{docs/REPRODUCIBILITY.md}.
 
 \appendix
 
@@ -1379,7 +1453,7 @@ Identifiability & Whether parameters can be uniquely inferred from the available
 
 
 \section{Appendix N: Python Example 1 - Inverse PINN for SIR Malware Propagation}
-This example illustrates a minimal inverse PINN. It generates synthetic sparse data from an SIR-style malware model, then learns the state trajectory and two unknown parameters. The example is intentionally compact. For a serious experiment, add train/validation splits, multiple seeds, noise experiments, and plots.
+This example illustrates a minimal inverse PINN. It generates sparse synthetic data from an SIR-style malware model, then learns the state trajectory and two unknown parameters. Research experiments additionally require train/validation splits, multiple seeds, noise and sparsity studies, and trajectory and residual plots.
 
 \begin{lstlisting}[language=Python]
 # Inverse PINN for SIR-style malware propagation.
@@ -1813,6 +1887,11 @@ Before trusting a result, check the following.
 \bibitem{cheng2024hodge} X. Cheng, L.-X. Yang, Q. Zhu, C. Gan, X. Yang, and G. Li, ``Cost-effective hybrid control strategies for dynamical propaganda war game,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 19, pp. 9789--9802, 2024.
 \bibitem{jafar2024malware} M. T. Jafar, L.-X. Yang, G. Li, Q. Zhu, and C. Gan, ``Minimizing malware propagation in Internet of Things networks: An optimal control using feedback loop approach,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 19, pp. 9682--9697, 2024.
 \bibitem{yang2019apt} L.-X. Yang, P. Li, X. Yang, Y. Y. Tang, and Y. Y. Tang, ``Security evaluation of the cyber networks under advanced persistent threats,'' \emph{IEEE Transactions on Dependable and Secure Computing}, vol. 16, no. 5, pp. 892--906, 2019.
+\bibitem{kashefi2022pointnet} A. Kashefi and T. Mukerji, ``Physics-informed PointNet: A deep learning solver for steady-state incompressible flows and thermal fields on multiple sets of irregular geometries,'' \emph{Journal of Computational Physics}, vol. 468, art. 111510, 2022, doi: 10.1016/j.jcp.2022.111510.
+\bibitem{mowlavi2023control} S. Mowlavi and S. Nabi, ``Optimal control of PDEs using physics-informed neural networks,'' \emph{Journal of Computational Physics}, vol. 473, art. 111731, 2023, doi: 10.1016/j.jcp.2022.111731.
+\bibitem{antonelo2024pinc} E. A. Antonelo, E. Camponogara, L. O. Seman, J. P. Jordanou, E. R. de Souza, and J. F. Huebner, ``Physics-informed neural nets for control of dynamical systems,'' \emph{Neurocomputing}, vol. 579, art. 127419, 2024, doi: 10.1016/j.neucom.2024.127419.
+\bibitem{liu2024lyznet} J. Liu, Y. Meng, and R. Zhou, ``LyZNet with Control: Physics-Informed Neural Network Control of Nonlinear Systems with Formal Guarantees,'' \emph{IFAC-PapersOnLine}, vol. 58, no. 11, pp. 201--206, 2024, doi: 10.1016/j.ifacol.2024.07.448.
+\bibitem{zhang2024pno} L. Zhang, M. Ghimire, Z. Xu, W. Zhang, and Y. Ren, ``Pontryagin neural operator for solving general-sum differential games with parametric state constraints,'' in \emph{Proceedings of the 6th Annual Learning for Dynamics and Control Conference}, PMLR, vol. 242, pp. 1728--1740, 2024.
 \end{thebibliography}
 
 

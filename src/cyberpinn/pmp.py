@@ -15,16 +15,26 @@ The example is compact but shows how PMP is explicitly connected
 to a neural loss.  This is different from ordinary RL, which may use only the
 same simulator and reward.
 """
+
 from __future__ import annotations
 
-import argparse
+import logging
 import torch
 
 from cybercontrol.models import controlled_sir_rhs_torch as f_state
-from cybercontrol.torch_utils import BoundedControlNet, MLP, SimplexStateNet, configure_torch, time_derivative
+from cybercontrol.torch_utils import (
+    BoundedControlNet,
+    MLP,
+    SimplexStateNet,
+    configure_torch,
+    time_derivative,
+)
 
 StateNet = SimplexStateNet
 ControlNet = BoundedControlNet
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def hamiltonian(x, u, lam, A, B, beta, gamma):
@@ -49,7 +59,10 @@ def train(args):
     state = StateNet(width=args.width, depth=depth).to(device)
     costate = MLP(1, 3, args.width, depth=depth).to(device)
     control = ControlNet(width=args.width, depth=depth, umax=args.umax).to(device)
-    opt = torch.optim.Adam(list(state.parameters()) + list(costate.parameters()) + list(control.parameters()), lr=args.lr)
+    opt = torch.optim.Adam(
+        list(state.parameters()) + list(costate.parameters()) + list(control.parameters()),
+        lr=args.lr,
+    )
     t = torch.linspace(0, args.T, args.n_collocation).view(-1, 1).to(device)
     t.requires_grad_(True)
     x0 = torch.tensor([[0.95, 0.05, 0.0]], device=device)
@@ -72,8 +85,8 @@ def train(args):
         # Interior stationarity Hu=0.  With sigmoid control this is approximate;
         # use a projected/KKT residual in research models where controls sit on
         # bounds for a large part of the horizon.
-        loss_state = torch.mean((dxdt-f)**2)
-        loss_costate = torch.mean((dlamdt + Hx)**2)
+        loss_state = torch.mean((dxdt - f) ** 2)
+        loss_costate = torch.mean((dlamdt + Hx) ** 2)
         loss_stationarity = torch.mean(Hu**2)
         loss_ic = torch.mean((state(torch.zeros(1, 1, device=device)) - x0) ** 2)
         loss_terminal = torch.mean((costate(torch.tensor([[args.T]], device=device)) - lamT) ** 2)
@@ -95,7 +108,7 @@ def train(args):
                 "boundary_loss": float((loss_ic + loss_terminal).detach().item()),
             }
             history.append(row)
-            print(
+            LOGGER.info(
                 f"it={it:05d}, loss={row['loss']:.2e}, "
                 f"state={row['state_loss']:.2e}, "
                 f"costate={row['costate_loss']:.2e}, "
@@ -104,36 +117,3 @@ def train(args):
     if getattr(args, "return_history", False):
         return state, costate, control, history
     return state, costate, control
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Train a PMP-informed PINN for malware optimal control.")
-    p.add_argument("--smoke", action="store_true", help="Run a tiny execution check.")
-    p.add_argument("--iters", type=int, default=5000, help="Number of optimizer iterations.")
-    p.add_argument("--T", type=float, default=20.0, help="Time horizon.")
-    p.add_argument("--n-collocation", type=int, default=200, help="Number of collocation points.")
-    p.add_argument("--width", type=int, default=64, help="Hidden width for state/costate/control networks.")
-    p.add_argument("--depth", type=int, default=2, help="Hidden-layer depth for state/costate/control networks.")
-    p.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate.")
-    p.add_argument("--beta", type=float, default=0.8, help="Compromise rate.")
-    p.add_argument("--gamma", type=float, default=0.2, help="Recovery/removal rate.")
-    p.add_argument("--umax", type=float, default=1.0, help="Maximum control intensity.")
-    p.add_argument("--A", type=float, default=10.0, help="Running penalty on infected devices.")
-    p.add_argument("--B", type=float, default=1.0, help="Quadratic control penalty.")
-    p.add_argument("--AT", type=float, default=10.0, help="Terminal penalty on infected devices.")
-    p.add_argument("--w-state", type=float, default=10.0, help="Weight on state residual loss.")
-    p.add_argument("--w-costate", type=float, default=1.0, help="Weight on costate residual loss.")
-    p.add_argument("--w-stat", type=float, default=1.0, help="Weight on stationarity loss.")
-    p.add_argument("--w-bc", type=float, default=10.0, help="Weight on boundary losses.")
-    p.add_argument("--log-every", type=int, default=1000, help="Iteration interval for console logs and history rows.")
-    p.add_argument("--seed", type=int, default=4, help="Random seed.")
-    p.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto", help="Training device.")
-    p.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
-    args = p.parse_args()
-    if args.smoke:
-        args.iters = 10
-        args.n_collocation = 50
-        args.width = 16
-        args.depth = 2
-        args.log_every = 1
-    train(args)

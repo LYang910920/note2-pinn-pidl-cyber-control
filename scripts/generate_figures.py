@@ -4,14 +4,15 @@ Copyright (c) 2026 Luxing Yang.
 Licensed under the MIT License. See LICENSE in the repository root.
 
 The figures show the sparse-data setup, the synthetic missing mechanism, and
-the neural architectures.  Training diagnostics live in
-`scripts/run_training_iterations.py`.
+the neural architectures. Training metrics are written by
+`python -m cyberpinn medium`.
 """
 
 from functools import partial
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
@@ -28,8 +29,9 @@ from cybercontrol.plotting import (
     save_publication_figure,
     style_axis,
 )
-from inverse_pinn_sir_malware import generate_data
-from pidl_unknown_mechanism import generate
+from cybercontrol.guide_diagrams import render_diagrams
+from cyberpinn.inverse import generate_data
+from cyberpinn.pidl import generate
 
 diagram_box = partial(add_box, width=1.9, height=0.58)
 
@@ -133,7 +135,10 @@ def plot_neural_architectures(output_dir: Path) -> None:
         fig,
         output_dir / "neural_architectures",
         formats=("png", "pdf"),
-        metadata={"figure_type": "guide diagram", "caption_hint": "PINN/PIDL network and residual structure."},
+        metadata={
+            "figure_type": "guide diagram",
+            "caption_hint": "PINN/PIDL network and residual structure.",
+        },
     )
     plt.close(fig)
 
@@ -144,6 +149,17 @@ def main() -> None:
     plot_sparse_inverse_data(output_dir)
     plot_pidl_missing_mechanism(output_dir)
     plot_neural_architectures(output_dir)
+    render_diagrams(
+        output_dir / "diagrams",
+        diagram_ids=(
+            "repository_family",
+            "state_transitions",
+            "pinn_loss",
+            "node_time_encoder_decoder",
+            "pmp_informed_pinn",
+            "model_to_paper",
+        ),
+    )
     print(f"Wrote figures to {output_dir}")
 
 

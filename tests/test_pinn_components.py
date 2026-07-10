@@ -6,12 +6,20 @@ import unittest
 import numpy as np
 import torch
 
-from control_pinn_malware import ControlNet, StateNet, rhs
-from experiment_profiles import describe_profiles, get_profile
-from inverse_pinn_sir_malware import generate_data
-from node_sips_inverse_pinn import NodeSIPSInverseConfig, generate_truth, resolve_node_inverse_device, train as train_node_sips
-from pidl_unknown_mechanism import generate
-from pmp_informed_pinn_malware import hamiltonian
+from cyberpinn.architectures import (
+    DenseTimeStateNet,
+    FactorizedNodeTimeStateNet,
+    build_node_features,
+    matched_factorized_width,
+)
+from cyberpinn.control import ControlNet, StateNet, rhs
+from cyberpinn.inverse import generate_data
+from cyberpinn.configs import NodeSIPSDataConfig
+from cyberpinn.node_inverse import resolve_node_inverse_device, train as train_node_sips
+from cyberpinn.node_problem import generate_truth, observed_node_indices
+from cyberpinn.pidl import generate
+from cyberpinn.pmp import hamiltonian
+from cyberpinn.profiles import describe_profiles, get_profile
 
 
 class PinnComponentTests(unittest.TestCase):
@@ -30,15 +38,23 @@ class PinnComponentTests(unittest.TestCase):
         self.assertTrue(torch.allclose(x.sum(dim=1), torch.ones(40), atol=1e-5))
 
     def test_node_sips_truth_generation_shape_and_mass(self):
-        cfg = NodeSIPSInverseConfig(nodes=6, communities=2, grid=16)
+        cfg = NodeSIPSDataConfig(nodes=6, communities=2, grid=16)
         t, x, A, community, params = generate_truth(cfg)
 
         self.assertEqual(t.shape, (16,))
         self.assertEqual(x.shape, (16, 6, 3))
         self.assertEqual(A.shape, (6, 6))
         self.assertEqual(community.shape, (6,))
-        self.assertGreater(float(params.resolve(6).susceptibility.max()), float(params.resolve(6).susceptibility.min()))
+        self.assertGreater(
+            float(params.resolve(6).susceptibility.max()),
+            float(params.resolve(6).susceptibility.min()),
+        )
         self.assertTrue(np.allclose(x.sum(axis=-1), 1.0, atol=1e-8))
+        observed_three = observed_node_indices(6, 3, cfg.seed)
+        observed_four = observed_node_indices(6, 4, cfg.seed)
+        self.assertTrue(set(observed_three).issubset(set(observed_four)))
+        with self.assertRaises(ValueError):
+            observed_node_indices(6, 0, cfg.seed)
 
     def test_control_network_outputs_are_bounded(self):
         t = torch.linspace(0.0, 1.0, 8).view(-1, 1)
@@ -85,6 +101,9 @@ class PinnComponentTests(unittest.TestCase):
             heterogeneity_strength = 0.25
             log_every = 1
             return_history = True
+            architecture = "dense"
+            graph_layers = 0
+            threads = 1
 
         _, history, cfg = train_node_sips(Args())
         iterations = [row["iteration"] for row in history]
@@ -97,6 +116,45 @@ class PinnComponentTests(unittest.TestCase):
         self.assertIn("susceptibility_rmse", history[-1])
         self.assertGreater(history[-1]["homogeneous_misspec_state_mse"], 0.0)
         self.assertLess(history[-1]["mass_error"], 1e-6)
+        self.assertIn("effective_transmission_rmse", history[-1])
+        self.assertAlmostEqual(history[-1]["infectivity_geometric_mean"], 1.0, places=5)
+        self.assertEqual(history[-1]["architecture_activation"], "tanh")
+        self.assertIn("time", history[-1]["architecture_input_shape"])
+
+    def test_factorized_node_time_shape_and_budget_matching(self):
+        cfg = NodeSIPSDataConfig(
+            nodes=6,
+            communities=2,
+            grid=12,
+            observed_nodes=3,
+            observed_times=6,
+        )
+        _, truth, adjacency, community, params = generate_truth(cfg)
+        features = build_node_features(
+            truth[0],
+            adjacency,
+            community,
+            params.resolve(cfg.nodes).criticality,
+            np.arange(cfg.observed_nodes),
+        )
+        width, dense_count, factorized_count = matched_factorized_width(
+            nodes=cfg.nodes,
+            dense_width=12,
+            dense_depth=2,
+            node_feature_dim=features.shape[1],
+        )
+        dense = DenseTimeStateNet(cfg.nodes, 12, 2)
+        factorized = FactorizedNodeTimeStateNet(
+            torch.tensor(features),
+            torch.tensor(adjacency, dtype=torch.float32),
+            width=width,
+            depth=2,
+        )
+        time = torch.linspace(0.0, 1.0, 5).reshape(-1, 1)
+        self.assertEqual(dense(time).shape, (5, cfg.nodes, 3))
+        self.assertEqual(factorized(time).shape, (5, cfg.nodes, 3))
+        self.assertLess(abs(factorized_count - dense_count) / dense_count, 0.25)
+        self.assertTrue(torch.allclose(factorized(time).sum(dim=-1), torch.ones(5, 6), atol=1e-6))
 
     def test_node_sips_inverse_device_resolution_is_explicit(self):
         self.assertEqual(resolve_node_inverse_device("cpu"), "cpu")

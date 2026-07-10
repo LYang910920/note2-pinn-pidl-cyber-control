@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "note2-pinn-pidl-cyber-control"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tutorial code for PINN, PIDL, inverse modeling, and neural optimal-control examples in cyber systems."
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE.md"]
 authors = [{name = "Luxing Yang"}]
 dependencies = [
     "numpy",
@@ -17,23 +18,17 @@ dependencies = [
     "matplotlib",
     "networkx",
     "torch",
+    "cybercontrol @ git+https://github.com/LYang910920/network-control-differential-games.git",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
 
-[tool.setuptools]
-py-modules = [
-    "control_pinn_malware",
-    "experiment_profiles",
-    "inverse_pinn_sir_malware",
-    "node_sips_inverse_pinn",
-    "pidl_unknown_mechanism",
-    "pmp_informed_pinn_malware",
-]
+[project.scripts]
+cyberpinn = "cyberpinn.cli:main"
 
-[tool.setuptools.package-dir]
-"" = "src"
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -42,6 +37,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "scripts"]
+target-version = "py310"
 
 [tool.ruff.lint]
 extend-ignore = [
