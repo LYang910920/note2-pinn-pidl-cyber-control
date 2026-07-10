@@ -442,10 +442,14 @@ not two independently interpreted susceptibility and infectivity estimates.
 \end{figure}
 
 The factorized model can be evaluated on an unseen graph size because its
-decoder is shared across nodes. Evaluation separates observed-time fit from
-held-out times, unobserved nodes and an unseen graph size. It also reports
+decoder is shared across nodes. Evaluation separates temporal holdout from
+nodes with no trajectory observations beyond the known initial condition, and
+also reports their joint holdout. Transfer to an unseen graph size is
+conditional on that graph's known initial state. The diagnostics include
 conservation error, residual error, effective-transmission RMSE and the error
-of a matched-mean homogeneous model. These tests do not remove
+of a parameter-mean-matched homogeneous model. The homogeneous model is scored
+on the same temporal, node, and joint node--time masks; its full-grid error is
+reported separately and is not compared directly with a holdout error. These tests do not remove
 non-identifiability; they expose whether the available observations support
 the proposed heterogeneous interpretation. Related physics-informed
 point-cloud work motivates shared geometric encoders on irregular domains
@@ -1240,7 +1244,7 @@ integration, device selection and metrics come from \texttt{cybercontrol}.
 Package module & PINN/PIDL task \\
 \midrule
 \texttt{cyberpinn.inverse} & inverse PINN for aggregate SIR states and rates. \\
-\texttt{cyberpinn.node\_problem} & heterogeneous SIPS truth, sparse observation subsets and matched homogeneous rollout. \\
+\texttt{cyberpinn.node\_problem} & heterogeneous SIPS truth, sparse observation subsets and a parameter-mean-matched homogeneous rollout. \\
 \texttt{cyberpinn.node\_inverse} & dense and factorized inverse-PINN training and held-out diagnostics. \\
 \texttt{cyberpinn.pidl} & known SIR dynamics plus a regularized learned correction. \\
 \texttt{cyberpinn.control} & direct neural-control optimization with bounded open-loop control. \\
@@ -1463,112 +1467,116 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-torch.manual_seed(1)
+def main():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch.manual_seed(1)
 
-# ---------- 1. Synthetic ground truth ----------
-def sir_rhs(x, beta, gamma):
-    S, I, R = x[..., 0], x[..., 1], x[..., 2]
-    dS = -beta * S * I
-    dI = beta * S * I - gamma * I
-    dR = gamma * I
-    return torch.stack([dS, dI, dR], dim=-1)
+    # ---------- 1. Synthetic ground truth ----------
+    def sir_rhs(x, beta, gamma):
+        S, I, R = x[..., 0], x[..., 1], x[..., 2]
+        dS = -beta * S * I
+        dI = beta * S * I - gamma * I
+        dR = gamma * I
+        return torch.stack([dS, dI, dR], dim=-1)
 
-def rk4_step(x, dt, beta, gamma):
-    k1 = sir_rhs(x, beta, gamma)
-    k2 = sir_rhs(x + 0.5 * dt * k1, beta, gamma)
-    k3 = sir_rhs(x + 0.5 * dt * k2, beta, gamma)
-    k4 = sir_rhs(x + dt * k3, beta, gamma)
-    return x + dt * (k1 + 2*k2 + 2*k3 + k4) / 6.0
+    def rk4_step(x, dt, beta, gamma):
+        k1 = sir_rhs(x, beta, gamma)
+        k2 = sir_rhs(x + 0.5 * dt * k1, beta, gamma)
+        k3 = sir_rhs(x + 0.5 * dt * k2, beta, gamma)
+        k4 = sir_rhs(x + dt * k3, beta, gamma)
+        return x + dt * (k1 + 2*k2 + 2*k3 + k4) / 6.0
 
-def generate_data(beta_true=0.8, gamma_true=0.2, T=20.0, n_grid=400):
-    dt = T / (n_grid - 1)
-    t = torch.linspace(0, T, n_grid).view(-1, 1)
-    x = torch.zeros(n_grid, 3)
-    x[0] = torch.tensor([0.95, 0.05, 0.0])
-    for k in range(n_grid - 1):
-        x[k+1] = rk4_step(x[k], dt, beta_true, gamma_true)
-        x[k+1] = torch.clamp(x[k+1], 0.0, 1.0)
-        x[k+1] = x[k+1] / x[k+1].sum()
-    return t, x
+    def generate_data(beta_true=0.8, gamma_true=0.2, T=20.0, n_grid=400):
+        dt = T / (n_grid - 1)
+        t = torch.linspace(0, T, n_grid).view(-1, 1)
+        x = torch.zeros(n_grid, 3)
+        x[0] = torch.tensor([0.95, 0.05, 0.0])
+        for k in range(n_grid - 1):
+            x[k+1] = rk4_step(x[k], dt, beta_true, gamma_true)
+            x[k+1] = torch.clamp(x[k+1], 0.0, 1.0)
+            x[k+1] = x[k+1] / x[k+1].sum()
+        return t, x
 
-t_all, x_all = generate_data()
-# Sparse observations: only I(t) is observed at 30 times.
-idx = torch.linspace(0, len(t_all)-1, 30).long()
-t_data = t_all[idx].to(DEVICE)
-I_data = x_all[idx, 1:2].to(DEVICE)
+    t_all, x_all = generate_data()
+    # Sparse observations: only I(t) is observed at 30 times.
+    idx = torch.linspace(0, len(t_all)-1, 30).long()
+    t_data = t_all[idx].to(device)
+    I_data = x_all[idx, 1:2].to(device)
 
-# ---------- 2. PINN model ----------
-class StateNet(nn.Module):
-    def __init__(self, width=64, depth=4):
-        super().__init__()
-        layers = [nn.Linear(1, width), nn.Tanh()]
-        for _ in range(depth - 1):
-            layers += [nn.Linear(width, width), nn.Tanh()]
-        layers += [nn.Linear(width, 3)]
-        self.net = nn.Sequential(*layers)
-    def forward(self, t):
-        logits = self.net(t)
-        # Softmax enforces S,I,R >= 0 and S+I+R = 1.
-        return torch.softmax(logits, dim=-1)
+    # ---------- 2. PINN model ----------
+    class StateNet(nn.Module):
+        def __init__(self, width=64, depth=4):
+            super().__init__()
+            layers = [nn.Linear(1, width), nn.Tanh()]
+            for _ in range(depth - 1):
+                layers += [nn.Linear(width, width), nn.Tanh()]
+            layers += [nn.Linear(width, 3)]
+            self.net = nn.Sequential(*layers)
+        def forward(self, t):
+            logits = self.net(t)
+            # Softmax enforces S,I,R >= 0 and S+I+R = 1.
+            return torch.softmax(logits, dim=-1)
 
-model = StateNet().to(DEVICE)
-# Raw trainable parameters. Softplus enforces positivity.
-beta_raw = nn.Parameter(torch.tensor(0.0, device=DEVICE))
-gamma_raw = nn.Parameter(torch.tensor(-1.0, device=DEVICE))
-params = list(model.parameters()) + [beta_raw, gamma_raw]
-opt = torch.optim.Adam(params, lr=1e-3)
+    model = StateNet().to(device)
+    # Raw trainable parameters. Softplus enforces positivity.
+    beta_raw = nn.Parameter(torch.tensor(0.0, device=device))
+    gamma_raw = nn.Parameter(torch.tensor(-1.0, device=device))
+    params = list(model.parameters()) + [beta_raw, gamma_raw]
+    opt = torch.optim.Adam(params, lr=1e-3)
 
-def positive(raw):
-    return torch.nn.functional.softplus(raw) + 1e-6
+    def positive(raw):
+        return torch.nn.functional.softplus(raw) + 1e-6
 
-# Collocation points where the ODE residual is enforced.
-T = 20.0
-t_f = torch.linspace(0, T, 200).view(-1, 1).to(DEVICE)
-t_f.requires_grad_(True)
-x0 = torch.tensor([[0.95, 0.05, 0.0]], device=DEVICE)
+    # Collocation points where the ODE residual is enforced.
+    T = 20.0
+    t_f = torch.linspace(0, T, 200).view(-1, 1).to(device)
+    t_f.requires_grad_(True)
+    x0 = torch.tensor([[0.95, 0.05, 0.0]], device=device)
 
-# ---------- 3. Training loop ----------
-for it in range(8000):
-    opt.zero_grad()
-    beta = positive(beta_raw)
-    gamma = positive(gamma_raw)
+    # ---------- 3. Training loop ----------
+    for it in range(8000):
+        opt.zero_grad()
+        beta = positive(beta_raw)
+        gamma = positive(gamma_raw)
 
-    # Data loss: only I(t) is observed.
-    x_d = model(t_data)
-    loss_data = torch.mean((x_d[:, 1:2] - I_data)**2)
+        # Data loss: only I(t) is observed.
+        x_d = model(t_data)
+        loss_data = torch.mean((x_d[:, 1:2] - I_data)**2)
 
-    # Initial condition loss.
-    x_init = model(torch.zeros(1, 1, device=DEVICE))
-    loss_ic = torch.mean((x_init - x0)**2)
+        # Initial condition loss.
+        x_init = model(torch.zeros(1, 1, device=device))
+        loss_ic = torch.mean((x_init - x0)**2)
 
-    # ODE residual loss through automatic differentiation.
-    x_f = model(t_f)
-    grads = []
-    for j in range(3):
-        grad_j = torch.autograd.grad(
-            x_f[:, j].sum(), t_f, create_graph=True
-        )[0]
-        grads.append(grad_j)
-    dxdt = torch.cat(grads, dim=1)
-    rhs = sir_rhs(x_f, beta, gamma)
-    loss_ode = torch.mean((dxdt - rhs)**2)
+        # ODE residual loss through automatic differentiation.
+        x_f = model(t_f)
+        grads = []
+        for j in range(3):
+            grad_j = torch.autograd.grad(
+                x_f[:, j].sum(), t_f, create_graph=True
+            )[0]
+            grads.append(grad_j)
+        dxdt = torch.cat(grads, dim=1)
+        rhs = sir_rhs(x_f, beta, gamma)
+        loss_ode = torch.mean((dxdt - rhs)**2)
 
-    loss = loss_data + 10.0 * loss_ic + loss_ode
-    loss.backward()
-    opt.step()
+        loss = loss_data + 10.0 * loss_ic + loss_ode
+        loss.backward()
+        opt.step()
 
-    if it % 1000 == 0:
-        print(it, float(loss), float(beta), float(gamma))
+        if it % 1000 == 0:
+            print(it, float(loss), float(beta), float(gamma))
 
-print("learned beta, gamma =", float(positive(beta_raw)), float(positive(gamma_raw)))
+    print("learned beta, gamma =", float(positive(beta_raw)), float(positive(gamma_raw)))
 
-# Evaluation with synthetic ground truth.
-with torch.no_grad():
-    t_eval = t_all.to(DEVICE)
-    x_pred = model(t_eval).cpu()
-    rmse_I = torch.sqrt(torch.mean((x_pred[:, 1] - x_all[:, 1])**2))
-    print("I(t) RMSE against ground truth =", float(rmse_I))
+    # Evaluation with synthetic ground truth.
+    with torch.no_grad():
+        t_eval = t_all.to(device)
+        x_pred = model(t_eval).cpu()
+        rmse_I = torch.sqrt(torch.mean((x_pred[:, 1] - x_all[:, 1])**2))
+        print("I(t) RMSE against ground truth =", float(rmse_I))
+
+if __name__ == "__main__":
+    main()
 \end{lstlisting}
 
 \section{Appendix O: Python Example 2 - PIDL with a Missing Propagation Mechanism}

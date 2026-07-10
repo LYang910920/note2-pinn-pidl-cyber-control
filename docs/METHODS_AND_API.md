@@ -23,15 +23,15 @@ closed-loop stability.
 
 Observation points constrain measured components. Collocation points enforce
 the differential equation and may include unobserved times and nodes. Training
-and held-out masks are saved separately. Noise is projected back to the state
-simplex so a synthetic noisy SIPS observation remains nonnegative and
-mass-conserving.
+and held-out masks are saved in `evaluation_masks.csv`. Gaussian noise is added
+only to observed infected fractions and clipped to `[0,1]`; the latent SIPS
+truth remains nonnegative and mass-conserving.
 
 The aggregate examples use SIR state `[S, I, R]`. The heterogeneous graph
 inverse problem uses SIPS `[S_i, I_i, P_i]` and the canonical node pressure
 
 ```text
-lambda_i = susceptibility_i * sum_j A_ij * infectivity_j * I_j.
+lambda_i = beta_i * susceptibility_i * sum_j A_ij * infectivity_j * I_j.
 ```
 
 The canonical graph model uses the three-compartment state `[S, I, P]`.
@@ -56,9 +56,11 @@ hyperparameters.
 
 ## Heterogeneous node-SIPS inverse model
 
-The synthetic truth uses node-specific susceptibility, infectivity and recovery,
-with known graph, patch, cleaning and waning terms. It does not fit one global
-`beta/gamma` pair to heterogeneous truth.
+The synthetic truth uses node-specific susceptibility, infectivity, recovery,
+patch efficacy and cleaning efficacy, with known graph, controls and waning.
+The inverse residual uses the known efficacy arrays and estimates
+community-specific susceptibility, infectivity and recovery; it does not fit one
+global `beta/gamma` pair to heterogeneous truth.
 
 Two estimators are compared at a matched parameter budget:
 
@@ -80,10 +82,14 @@ geometric mean of infectivity to one and reports both parameter RMSE and the
 effective transmission-matrix error
 `beta * susceptibility[:, None] * A * infectivity[None, :]`.
 
-Evaluation includes held-out times, entirely unobserved nodes, a matched
-homogeneous misspecification rollout and transfer of the factorized model to an
-unseen node count. Claims remain limited to the configured synthetic graph and
-observation model.
+Evaluation separates held-out times from nodes that have no trajectory
+observations beyond the known initial condition. It also reports their joint
+holdout, a parameter-mean-matched homogeneous rollout, and transfer of the
+factorized model to an unseen node count conditional on that graph's known
+initial state. The homogeneous rollout is evaluated on the same temporal, node
+and joint node-time masks as the learned model; its full-grid MSE is reported
+separately and is not compared directly with a holdout metric. Claims remain
+limited to the configured synthetic graph and observation model.
 
 Default node inverse settings are 8 nodes, 2 communities, horizon 6, 61 time
 points, 4 observed nodes, 14 observed times, 32 collocation points, 500

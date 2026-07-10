@@ -82,7 +82,16 @@ def _make_model(args, initial, adjacency, community, criticality, observed_nodes
         ).to(device)
     else:
         raise ValueError("architecture must be dense or factorized")
-    architecture_summary = ARCHITECTURE_REGISTRY.describe(architecture, model)
+    architecture_summary = ARCHITECTURE_REGISTRY.describe(
+        architecture,
+        model,
+        configuration={
+            "width": resolved_width,
+            "depth": int(args.depth),
+            "graph_layers": int(getattr(args, "graph_layers", 0)),
+            "fourier_features": 0,
+        },
+    )
     return model, node_features, resolved_width, matched_target, architecture_summary
 
 
@@ -111,13 +120,46 @@ def train(args):
     unobserved_nodes = np.setdiff1d(np.arange(cfg.nodes), observed_nodes)
     data_index = np.linspace(0, cfg.grid - 1, cfg.observed_times, dtype=int)
     heldout_time = np.setdiff1d(np.arange(cfg.grid), data_index)[:: max(1, cfg.grid // 12)]
+    observed_time_after_initial = data_index[data_index != 0]
+    truth_resolved = truth_params.resolve(cfg.nodes)
     homogeneous_path = rollout_known_params(
         cfg,
         adjacency_np,
         truth[0],
-        NodeSIPSParams(beta=cfg.beta_true, gamma=cfg.gamma_true, omega=cfg.omega),
+        truth_resolved.matched_mean(),
     )
     homogeneous_misspecification_mse = float(np.mean((homogeneous_path - truth) ** 2))
+    homogeneous_temporal_mse = (
+        float(np.mean((homogeneous_path[heldout_time] - truth[heldout_time]) ** 2))
+        if len(heldout_time)
+        else float("nan")
+    )
+    homogeneous_node_mse = (
+        float(
+            np.mean(
+                (
+                    homogeneous_path[np.ix_(observed_time_after_initial, unobserved_nodes)]
+                    - truth[np.ix_(observed_time_after_initial, unobserved_nodes)]
+                )
+                ** 2
+            )
+        )
+        if len(unobserved_nodes) and len(observed_time_after_initial)
+        else float("nan")
+    )
+    homogeneous_joint_mse = (
+        float(
+            np.mean(
+                (
+                    homogeneous_path[np.ix_(heldout_time, unobserved_nodes)]
+                    - truth[np.ix_(heldout_time, unobserved_nodes)]
+                )
+                ** 2
+            )
+        )
+        if len(unobserved_nodes) and len(heldout_time)
+        else float("nan")
+    )
     observed_infected = truth[np.ix_(data_index, observed_nodes, [1])].squeeze(-1)
     if cfg.noise > 0:
         full_noise = rng.normal(0.0, cfg.noise, (len(data_index), cfg.nodes))
@@ -127,7 +169,6 @@ def train(args):
             1.0,
         )
 
-    truth_resolved = truth_params.resolve(cfg.nodes)
     model, node_features, resolved_width, matched_target, architecture_summary = _make_model(
         args,
         truth[0],
@@ -178,6 +219,8 @@ def train(args):
             infectivity=infectivity,
             gamma=gamma,
             omega=cfg.omega,
+            patch_efficacy=truth_resolved.patch_efficacy,
+            clean_efficacy=truth_resolved.clean_efficacy,
         )
         rhs = torch.stack(
             [
@@ -205,20 +248,39 @@ def train(args):
         if iteration % args.log_every == 0 or iteration == args.iters - 1:
             with torch.no_grad():
                 susceptibility_group, infectivity_group, gamma_group = rate_head()
-                held_time_tensor = torch.tensor(
-                    time_np[heldout_time, None], dtype=torch.float32, device=device
+                all_time_tensor = torch.tensor(time_np[:, None], dtype=torch.float32, device=device)
+                all_prediction = model(all_time_tensor).cpu().numpy()
+                temporal_mse = (
+                    float(np.mean((all_prediction[heldout_time] - truth[heldout_time]) ** 2))
+                    if len(heldout_time)
+                    else float("nan")
                 )
-                held_prediction = model(held_time_tensor).cpu().numpy()
-                held_truth = truth[heldout_time]
-                temporal_mse = float(np.mean((held_prediction - held_truth) ** 2))
-                unobserved_mse = (
+                node_holdout_mse = (
                     float(
                         np.mean(
-                            (held_prediction[:, unobserved_nodes] - held_truth[:, unobserved_nodes])
+                            (
+                                all_prediction[
+                                    np.ix_(observed_time_after_initial, unobserved_nodes)
+                                ]
+                                - truth[np.ix_(observed_time_after_initial, unobserved_nodes)]
+                            )
                             ** 2
                         )
                     )
-                    if len(unobserved_nodes)
+                    if len(unobserved_nodes) and len(observed_time_after_initial)
+                    else float("nan")
+                )
+                joint_holdout_mse = (
+                    float(
+                        np.mean(
+                            (
+                                all_prediction[np.ix_(heldout_time, unobserved_nodes)]
+                                - truth[np.ix_(heldout_time, unobserved_nodes)]
+                            )
+                            ** 2
+                        )
+                    )
+                    if len(unobserved_nodes) and len(heldout_time)
                     else float("nan")
                 )
                 learned_sus = susceptibility_group.cpu().numpy()
@@ -239,10 +301,16 @@ def train(args):
                         "residual_loss_before_step": float(residual_loss.detach().cpu()),
                         "heldout_state_mse": temporal_mse,
                         "temporal_holdout_state_mse": temporal_mse,
-                        "heldout_node_state_mse": unobserved_mse,
-                        "unobserved_node_state_mse": unobserved_mse,
+                        "heldout_node_state_mse": node_holdout_mse,
+                        "unobserved_node_state_mse": node_holdout_mse,
+                        "node_holdout_at_observed_times_mse": node_holdout_mse,
+                        "joint_node_time_holdout_state_mse": joint_holdout_mse,
                         "homogeneous_misspec_state_mse": homogeneous_misspecification_mse,
                         "homogeneous_known_rate_misspecification_mse": homogeneous_misspecification_mse,
+                        "homogeneous_temporal_holdout_state_mse": homogeneous_temporal_mse,
+                        "homogeneous_node_holdout_at_observed_times_mse": homogeneous_node_mse,
+                        "homogeneous_joint_node_time_holdout_state_mse": homogeneous_joint_mse,
+                        "homogeneous_baseline_rule": "node-wise arithmetic mean of resolved truth",
                         "effective_transmission_rmse": effective_rmse,
                         "susceptibility_rmse": float(
                             np.sqrt(np.mean((learned_sus - truth_sus) ** 2))
@@ -250,7 +318,7 @@ def train(args):
                         "infectivity_rmse": float(np.sqrt(np.mean((learned_inf - truth_inf) ** 2))),
                         "gamma_rmse": float(np.sqrt(np.mean((learned_gamma - truth_gamma) ** 2))),
                         "infectivity_geometric_mean": float(np.exp(np.mean(np.log(learned_inf)))),
-                        "mass_error": float(np.max(np.abs(held_prediction.sum(axis=-1) - 1.0))),
+                        "mass_error": float(np.max(np.abs(all_prediction.sum(axis=-1) - 1.0))),
                         "architecture": getattr(args, "architecture", "dense"),
                         "resolved_width": resolved_width,
                         "state_parameters": parameter_count(model),
@@ -259,6 +327,10 @@ def train(args):
                         "observation_fraction": float(len(observed_nodes) / cfg.nodes),
                         "noise_std": float(cfg.noise),
                         "identifiability_note": "infectivity geometric mean fixed to one",
+                        "known_patch_efficacy_min": float(truth_resolved.patch_efficacy.min()),
+                        "known_patch_efficacy_max": float(truth_resolved.patch_efficacy.max()),
+                        "known_clean_efficacy_min": float(truth_resolved.clean_efficacy.min()),
+                        "known_clean_efficacy_max": float(truth_resolved.clean_efficacy.max()),
                         "architecture_activation": str(architecture_summary["activation"]),
                         "architecture_normalization": str(architecture_summary["normalization"]),
                         "architecture_encoder": str(architecture_summary["encoder"]),
@@ -266,6 +338,9 @@ def train(args):
                         "architecture_decoder": str(architecture_summary["decoder"]),
                         "architecture_input_shape": str(architecture_summary["input_shape"]),
                         "architecture_output_shape": str(architecture_summary["output_shape"]),
+                        "architecture_depth": int(args.depth),
+                        "architecture_graph_layers": int(getattr(args, "graph_layers", 0)),
+                        "architecture_fourier_features": 0,
                     }
                 )
             LOGGER.info(
@@ -276,7 +351,18 @@ def train(args):
                 history[-1]["effective_transmission_rmse"],
             )
     if getattr(args, "return_history", False):
-        return model, history, {**asdict(cfg), "node_feature_dim": node_features.shape[1]}
+        return (
+            model,
+            history,
+            {
+                **asdict(cfg),
+                "node_feature_dim": node_features.shape[1],
+                "observed_node_indices": observed_nodes.tolist(),
+                "unobserved_node_indices": unobserved_nodes.tolist(),
+                "observed_time_indices": data_index.tolist(),
+                "heldout_time_indices": heldout_time.tolist(),
+            },
+        )
     return model, history
 
 

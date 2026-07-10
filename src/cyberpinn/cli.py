@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from cybercontrol.experiments import git_sha, hardware_summary
+from cybercontrol.experiments import run_provenance
 from cybercontrol.io import write_csv, write_json
 from cybercontrol.nn import parameter_count
 
@@ -113,6 +113,7 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
     output_dir.mkdir(parents=True, exist_ok=True)
     total_started = time.perf_counter()
     rows: list[dict[str, float | int | str]] = []
+    mask_rows: list[dict[str, float | int | str]] = []
     seeds = (31, 43, 59)
     for seed in seeds:
         aggregate_configs = (
@@ -224,6 +225,41 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
                         }
                     )
                     rows.append(row)
+                    if architecture == "dense":
+                        observed_node_set = set(truth_config["observed_node_indices"])
+                        observed_time_set = set(truth_config["observed_time_indices"])
+                        for node in range(config.nodes):
+                            mask_rows.append(
+                                {
+                                    "seed": seed,
+                                    "noise_std": noise,
+                                    "observed_node_count": observed_nodes,
+                                    "axis": "node",
+                                    "index": node,
+                                    "coordinate": node,
+                                    "split": (
+                                        "trajectory_observed"
+                                        if node in observed_node_set
+                                        else "trajectory_held_out_after_initial_condition"
+                                    ),
+                                }
+                            )
+                        for index in range(config.grid):
+                            mask_rows.append(
+                                {
+                                    "seed": seed,
+                                    "noise_std": noise,
+                                    "observed_node_count": observed_nodes,
+                                    "axis": "time",
+                                    "index": index,
+                                    "coordinate": index
+                                    * truth_config["horizon"]
+                                    / (config.grid - 1),
+                                    "split": "observed"
+                                    if index in observed_time_set
+                                    else "held_out",
+                                }
+                            )
                     if architecture == "factorized":
                         transfer = evaluate_factorized_transfer(
                             model,
@@ -244,6 +280,7 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
                         rows.append(transfer)
 
     write_csv(output_dir / "medium_metrics.csv", rows)
+    write_csv(output_dir / "evaluation_masks.csv", mask_rows)
     write_json(
         output_dir / "medium_manifest.json",
         {
@@ -252,9 +289,8 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
             "resolved_devices": sorted(
                 {str(row["resolved_device"]) for row in rows if "resolved_device" in row}
             ),
-            "commit_sha": git_sha(ROOT),
             "total_runtime_seconds": time.perf_counter() - total_started,
-            "hardware": hardware_summary(),
+            **run_provenance(ROOT),
             "aggregate_iterations": 150,
             "node_iterations": 300,
             "node_architectures": ["dense", "factorized"],
@@ -262,6 +298,7 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
             "observation_counts": [4, 3],
             "factorial_noise_by_observation_count": True,
             "unseen_nodes": 10,
+            "evaluation_masks": "evaluation_masks.csv",
         },
     )
     return rows
@@ -303,7 +340,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     if args.command == "smoke":
-        print(write_json(Path("artifacts/smoke_summary.json"), _smoke()))
+        print(
+            write_json(
+                Path("artifacts/smoke_summary.json"),
+                {"command": "smoke", **run_provenance(ROOT), "metrics": _smoke()},
+            )
+        )
     elif args.command == "medium":
         rows = _medium(args.output_dir, args.device)
         print(f"wrote {len(rows)} rows to {args.output_dir}")
@@ -312,7 +354,12 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "docs":
         _build_docs()
     elif args.command == "all":
-        print(write_json(Path("artifacts/smoke_summary.json"), _smoke()))
+        print(
+            write_json(
+                Path("artifacts/smoke_summary.json"),
+                {"command": "smoke", **run_provenance(ROOT), "metrics": _smoke()},
+            )
+        )
         _run_script("scripts/generate_figures.py")
         _build_docs()
 

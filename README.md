@@ -32,8 +32,9 @@ python -m cyberpinn smoke
 python -m pytest -q
 ```
 
-After the foundation `0.2.0` changes are on `main`, a standalone checkout can
-use `python -m pip install -e ".[dev]"`.
+For a standalone checkout, `python -m pip install -e ".[dev]"` installs the
+reviewed Foundation revision pinned in `pyproject.toml`. The sibling-checkout
+commands above remain convenient when developing the repository family together.
 
 ```bash
 python -m cyberpinn medium --device auto --output-dir artifacts/medium
@@ -67,9 +68,9 @@ evaluates hidden states and parameters against an independent ODE solution.
 ![PINN loss assembly](docs/assets/diagrams/pinn_loss.png)
 
 The heterogeneous SIPS estimator compares dense and factorized node-time
-architectures at a matched parameter budget. It reports held-out times,
-unobserved nodes, an unseen node count and a homogeneous misspecification
-baseline.
+architectures at a matched parameter budget. It reports held-out times, nodes
+without trajectory observations beyond the known initial condition, an unseen
+node count and a parameter-mean-matched homogeneous baseline.
 
 ![Node-time encoder-decoder](docs/assets/diagrams/node_time_encoder_decoder.png)
 

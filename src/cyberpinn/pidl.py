@@ -111,7 +111,7 @@ def train(args):
         loss = loss_data + args.w_ic * loss_ic + args.w_res * loss_res + args.w_corr * loss_corr
         loss.backward()
         opt.step()
-        if it % args.log_every == 0:
+        if it % args.log_every == 0 or it == args.iters - 1:
             row = {
                 "iteration": it,
                 "loss": float(loss.detach().item()),

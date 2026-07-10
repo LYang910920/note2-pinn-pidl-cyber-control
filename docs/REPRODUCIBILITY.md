@@ -39,7 +39,7 @@ updates in the full factorial combination of noise levels `0` and `0.02` with
 4 or 3 observed nodes. Noise and observation density are therefore reported
 as separate factors.
 Factorized models are evaluated on an unseen 10-node graph. Outputs are
-`medium_metrics.csv` and `medium_manifest.json`.
+`medium_metrics.csv`, `evaluation_masks.csv`, and `medium_manifest.json`.
 
 ## Validation
 
@@ -53,8 +53,10 @@ python -m cyberpinn docs
 ```
 
 Tests cover residual shapes, finite values, SIPS mass conservation,
-NumPy/Torch parity, deterministic seeds, noise projection, held-out masks,
-identifiability gauge, matched architecture size and unseen-node transfer.
+NumPy/Torch parity, deterministic observation subsets, full-observation edge
+cases, identifiability gauge, matched architecture size and unseen-node
+transfer. The medium artifact records the exact node/time masks used by each
+noise and sparsity case.
 
 Inspect each non-smoke run for:
 

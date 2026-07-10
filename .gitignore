@@ -19,4 +19,5 @@ literature_pdfs/
 *.toc
 docs/source/*.pdf
 docs/assets/*.pdf
+!docs/assets/diagrams/*.pdf
 docs/assets/*.figure.json

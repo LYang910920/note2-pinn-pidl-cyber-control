@@ -6,6 +6,7 @@ import numpy as np
 
 from cybercontrol.network_models import (
     NodeSIPSParams,
+    ResolvedNodeSIPSParams,
     community_correlated_node_sips_params,
     contiguous_community_index,
     node_sips_rhs_numpy,
@@ -41,7 +42,7 @@ def rollout_known_params(
     cfg: NodeSIPSDataConfig,
     adjacency: np.ndarray,
     initial: np.ndarray,
-    params: NodeSIPSParams,
+    params: NodeSIPSParams | ResolvedNodeSIPSParams,
 ) -> np.ndarray:
     """Roll out one specified SIPS parameterization on the data grid."""
 

@@ -98,7 +98,7 @@ def train(args):
         loss = loss_data + args.w_ic * loss_ic + args.w_ode * loss_ode
         loss.backward()
         opt.step()
-        if it % args.log_every == 0:
+        if it % args.log_every == 0 or it == args.iters - 1:
             row = {
                 "iteration": it,
                 "loss": float(loss.detach().item()),

@@ -98,7 +98,7 @@ def train(args):
         )
         loss.backward()
         opt.step()
-        if it % args.log_every == 0:
+        if it % args.log_every == 0 or it == args.iters - 1:
             row = {
                 "iteration": it,
                 "loss": float(loss.detach().item()),

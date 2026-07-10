@@ -15,8 +15,14 @@ from cyberpinn.architectures import (
 from cyberpinn.control import ControlNet, StateNet, rhs
 from cyberpinn.inverse import generate_data
 from cyberpinn.configs import NodeSIPSDataConfig
-from cyberpinn.node_inverse import resolve_node_inverse_device, train as train_node_sips
-from cyberpinn.node_problem import generate_truth, observed_node_indices
+from cyberpinn.configs import InverseConfig, NodeInverseTrainConfig
+from cyberpinn.inverse import train as train_inverse
+from cyberpinn.node_inverse import (
+    evaluate_factorized_transfer,
+    resolve_node_inverse_device,
+    train as train_node_sips,
+)
+from cyberpinn.node_problem import generate_truth, observed_node_indices, rollout_known_params
 from cyberpinn.pidl import generate
 from cyberpinn.pmp import hamiltonian
 from cyberpinn.profiles import describe_profiles, get_profile
@@ -53,6 +59,12 @@ class PinnComponentTests(unittest.TestCase):
         observed_three = observed_node_indices(6, 3, cfg.seed)
         observed_four = observed_node_indices(6, 4, cfg.seed)
         self.assertTrue(set(observed_three).issubset(set(observed_four)))
+        resolved = params.resolve(cfg.nodes)
+        matched = resolved.matched_mean()
+        for field in ("susceptibility", "infectivity", "gamma", "patch_efficacy", "clean_efficacy"):
+            self.assertTrue(np.allclose(getattr(matched, field), np.mean(getattr(resolved, field))))
+        matched_path = rollout_known_params(cfg, A, x[0], matched)
+        self.assertGreater(float(np.mean((matched_path - x) ** 2)), 0.0)
         with self.assertRaises(ValueError):
             observed_node_indices(6, 0, cfg.seed)
 
@@ -112,7 +124,11 @@ class PinnComponentTests(unittest.TestCase):
         self.assertEqual(len(iterations), len(set(iterations)))
         self.assertIn("heldout_state_mse", history[-1])
         self.assertIn("heldout_node_state_mse", history[-1])
+        self.assertIn("joint_node_time_holdout_state_mse", history[-1])
         self.assertIn("homogeneous_misspec_state_mse", history[-1])
+        self.assertIn("homogeneous_temporal_holdout_state_mse", history[-1])
+        self.assertIn("homogeneous_node_holdout_at_observed_times_mse", history[-1])
+        self.assertIn("homogeneous_joint_node_time_holdout_state_mse", history[-1])
         self.assertIn("susceptibility_rmse", history[-1])
         self.assertGreater(history[-1]["homogeneous_misspec_state_mse"], 0.0)
         self.assertLess(history[-1]["mass_error"], 1e-6)
@@ -120,6 +136,36 @@ class PinnComponentTests(unittest.TestCase):
         self.assertAlmostEqual(history[-1]["infectivity_geometric_mean"], 1.0, places=5)
         self.assertEqual(history[-1]["architecture_activation"], "tanh")
         self.assertIn("time", history[-1]["architecture_input_shape"])
+        self.assertLess(
+            history[-1]["known_patch_efficacy_min"],
+            history[-1]["known_patch_efficacy_max"],
+        )
+        self.assertLess(
+            history[-1]["known_clean_efficacy_min"],
+            history[-1]["known_clean_efficacy_max"],
+        )
+
+    def test_node_inverse_supports_no_temporal_holdout(self):
+        config = NodeInverseTrainConfig(
+            nodes=5,
+            communities=2,
+            grid=8,
+            observed_nodes=3,
+            observed_times=8,
+            collocation=8,
+            iters=2,
+            width=8,
+            depth=2,
+            log_every=10,
+            device="cpu",
+        )
+
+        _, history, split = train_node_sips(config)
+
+        self.assertEqual(history[-1]["iteration"], 1)
+        self.assertTrue(np.isnan(history[-1]["temporal_holdout_state_mse"]))
+        self.assertEqual(split["heldout_time_indices"], [])
+        self.assertLess(history[-1]["mass_error"], 1e-6)
 
     def test_factorized_node_time_shape_and_budget_matching(self):
         cfg = NodeSIPSDataConfig(
@@ -155,6 +201,25 @@ class PinnComponentTests(unittest.TestCase):
         self.assertEqual(factorized(time).shape, (5, cfg.nodes, 3))
         self.assertLess(abs(factorized_count - dense_count) / dense_count, 0.25)
         self.assertTrue(torch.allclose(factorized(time).sum(dim=-1), torch.ones(5, 6), atol=1e-6))
+
+        transfer = evaluate_factorized_transfer(factorized, cfg, nodes=7, seed=99)
+        self.assertTrue(np.isfinite(transfer["graph_transfer_state_mse"]))
+        self.assertLess(transfer["mass_error"], 1e-6)
+
+    def test_aggregate_inverse_logs_the_final_optimizer_step(self):
+        config = InverseConfig(
+            iters=3,
+            width=8,
+            depth=2,
+            n_data=6,
+            n_collocation=10,
+            log_every=10,
+            device="cpu",
+        )
+
+        *_, history = train_inverse(config)
+
+        self.assertEqual(history[-1]["iteration"], 2)
 
     def test_node_sips_inverse_device_resolution_is_explicit(self):
         self.assertEqual(resolve_node_inverse_device("cpu"), "cpu")
