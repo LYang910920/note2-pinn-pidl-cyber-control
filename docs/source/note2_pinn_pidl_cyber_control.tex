@@ -437,7 +437,7 @@ not two independently interpreted susceptibility and infectivity estimates.
 \begin{figure}[h!]
 \centering
 \includegraphics[width=0.94\linewidth]{../assets/diagrams/node_time_encoder_decoder.pdf}
-\caption{Matched-budget state architectures. The dense baseline maps time to a fixed $N\times3$ output. The factorized model combines a shared time embedding with node features and an optional graph encoder, then applies a shared three-state decoder.}
+\caption{Factorized node--time architecture used for graph transfer. The maintained node feature vector contains the known initial $[S,I,P]$ state, normalized degree, community index, criticality, and observation mask. A shared decoder produces $[B,N,3]$ states. The experimental comparison matches its trainable parameter count to a separate dense time-to-$N\times3$ baseline, which is not drawn here.}
 \label{fig:node-time-architecture}
 \end{figure}
 
@@ -785,7 +785,7 @@ Step & Question & Output \\
 \bottomrule
 \end{longtable}
 
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.95\linewidth]{../assets/diagrams/model_to_paper.pdf}
 \caption{From model statement to reproducible evidence. For PINN/PIDL studies, the method block must specify observations, unknowns, network outputs and every residual term; the validation block must include held-out and baseline tests.}

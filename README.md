@@ -65,6 +65,8 @@ python -m cyberpinn all
 The inverse PINN separates sparse observations from collocation points and
 evaluates hidden states and parameters against an independent ODE solution.
 
+![Sparse inverse-PINN observations](docs/assets/inverse_pinn_sparse_data.png)
+
 ![PINN loss assembly](docs/assets/diagrams/pinn_loss.png)
 
 The heterogeneous SIPS estimator compares dense and factorized node-time
@@ -74,11 +76,12 @@ node count and a parameter-mean-matched homogeneous baseline.
 
 ![Node-time encoder-decoder](docs/assets/diagrams/node_time_encoder_decoder.png)
 
-The aggregate experiment suite compares inverse PINN, PIDL, direct neural
-control and PMP-informed residual learning using method-specific diagnostics.
-Training losses are not compared as if their scales were interchangeable.
+The PIDL example adds the synthetic missing mechanism $qSI^2$ to a known SIR
+right-hand side. The lower panel reports that physical correction term, not a
+training loss. Medium-run metrics remain under `artifacts/medium/` because they
+depend on the selected device, seed, and training profile.
 
-![Method baseline comparison](docs/assets/baseline_comparison.png)
+![PIDL missing mechanism](docs/assets/pidl_missing_mechanism.png)
 
 The node inverse model fixes the susceptibility-infectivity scale gauge and
 reports effective transmission-matrix error. State recovery may be accurate even

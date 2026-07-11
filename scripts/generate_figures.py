@@ -3,12 +3,11 @@
 Copyright (c) 2026 Luxing Yang.
 Licensed under the MIT License. See LICENSE in the repository root.
 
-The figures show the sparse-data setup, the synthetic missing mechanism, and
-the neural architectures. Training metrics are written by
+The figures show the sparse-data setup and the synthetic missing mechanism.
+Shared neural-architecture diagrams come from ``cybercontrol``. Training metrics are written by
 `python -m cyberpinn medium`.
 """
 
-from functools import partial
 from pathlib import Path
 
 import matplotlib
@@ -20,20 +19,14 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 
 from cybercontrol.plotting import (
-    add_arrow,
-    add_box,
-    guide_style,
     panel_label,
     publication_style,
-    save_guide_figure,
     save_publication_figure,
     style_axis,
 )
 from cybercontrol.guide_diagrams import render_diagrams
 from cyberpinn.inverse import generate_data
 from cyberpinn.pidl import generate
-
-diagram_box = partial(add_box, width=1.9, height=0.58)
 
 
 def plot_sparse_inverse_data(output_dir: Path) -> None:
@@ -74,8 +67,8 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
     panel_label(axes[0], "(a) PIDL synthetic state")
     style_axis(axes[0], ylabel="Population share", legend=True)
 
-    axes[1].plot(t[:, 0], correction, color="black", label="q S I^2")
-    panel_label(axes[1], "(b) unknown RHS correction q S I^2")
+    axes[1].plot(t[:, 0], correction, color="black", label=r"$qSI^2$")
+    panel_label(axes[1], r"(b) unknown RHS correction $qSI^2$")
     style_axis(axes[1], xlabel="Time", ylabel="RHS correction magnitude", legend=True)
     fig.tight_layout()
     save_publication_figure(
@@ -90,65 +83,11 @@ def plot_pidl_missing_mechanism(output_dir: Path) -> None:
     plt.close(fig)
 
 
-def plot_neural_architectures(output_dir: Path) -> None:
-    with guide_style():
-        fig, axes = plt.subplots(1, 2, figsize=(11, 4.8))
-
-    ax = axes[0]
-    diagram_box(ax, (0.1, 2.75), "time t", fc="#e8f1ff")
-    diagram_box(ax, (2.1, 2.75), "state network\nx_theta(t)", fc="#fff4df")
-    diagram_box(ax, (4.5, 2.75), "S(t), I(t), R(t)\nsoftmax simplex", width=2.2, fc="#e9f7ef")
-    diagram_box(ax, (7.1, 3.25), "data loss\nobserved I(t)", width=1.9, fc="#f4ecff")
-    diagram_box(ax, (7.1, 2.15), "ODE residual\nx' - f(x)", width=2.0, fc="#ffecec")
-    add_arrow(ax, (2.0, 3.04), (2.1, 3.04))
-    add_arrow(ax, (4.0, 3.04), (4.5, 3.04))
-    add_arrow(ax, (6.6, 3.04), (7.1, 3.54))
-    add_arrow(ax, (6.6, 3.04), (7.1, 2.44))
-    panel_label(ax, "(a) inverse PINN / PIDL state learner")
-    ax.set_xlim(0, 9.7)
-    ax.set_ylim(1.2, 4.2)
-    ax.axis("off")
-
-    ax = axes[1]
-    diagram_box(ax, (0.1, 3.25), "time t", fc="#e8f1ff")
-    diagram_box(ax, (2.0, 3.25), "state net\nx_theta(t)", fc="#fff4df")
-    diagram_box(ax, (2.0, 2.25), "costate net\nlambda_psi(t)", fc="#fff4df")
-    diagram_box(ax, (2.0, 1.25), "control net\nu_phi(t)", fc="#fff4df")
-    diagram_box(ax, (4.6, 2.25), "Hamiltonian\nH(x,u,lambda)", width=2.1, fc="#e9f7ef")
-    diagram_box(ax, (7.2, 3.1), "state residual", fc="#ffecec")
-    diagram_box(ax, (7.2, 2.25), "costate residual", fc="#ffecec")
-    diagram_box(ax, (7.2, 1.4), "stationarity\nH_u = 0", fc="#ffecec")
-    add_arrow(ax, (1.9, 3.54), (2.0, 3.54))
-    add_arrow(ax, (3.9, 3.54), (4.6, 2.85))
-    add_arrow(ax, (3.9, 2.54), (4.6, 2.54))
-    add_arrow(ax, (3.9, 1.54), (4.6, 2.25))
-    add_arrow(ax, (6.7, 2.54), (7.2, 3.39))
-    add_arrow(ax, (6.7, 2.54), (7.2, 2.54))
-    add_arrow(ax, (6.7, 2.54), (7.2, 1.69))
-    panel_label(ax, "(b) PMP-informed control PINN")
-    ax.set_xlim(0, 9.5)
-    ax.set_ylim(0.7, 4.2)
-    ax.axis("off")
-
-    fig.tight_layout()
-    save_guide_figure(
-        fig,
-        output_dir / "neural_architectures",
-        formats=("png", "pdf"),
-        metadata={
-            "figure_type": "guide diagram",
-            "caption_hint": "PINN/PIDL network and residual structure.",
-        },
-    )
-    plt.close(fig)
-
-
 def main() -> None:
     output_dir = ROOT / "docs" / "assets"
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_sparse_inverse_data(output_dir)
     plot_pidl_missing_mechanism(output_dir)
-    plot_neural_architectures(output_dir)
     render_diagrams(
         output_dir / "diagrams",
         diagram_ids=(
