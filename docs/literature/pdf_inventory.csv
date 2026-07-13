@@ -1,0 +1,2 @@
+filename,sha256,bytes,pages,text_extraction_status,text_cache_path,evidence_note,review_status
+zhang2024_pontryagin_neural_operator.pdf,9a5a4c55fafa4f868a592847b818e3f9f09736663df06e5cd6bafc8a3e0d0cc0,2587440,13,ok,.literature_cache/text/zhang2024_pontryagin_neural_operator.txt,evidence_notes/zhang2024pno.md,reviewed

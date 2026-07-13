@@ -13,6 +13,7 @@ from cyberpinn.architectures import (
     matched_factorized_width,
 )
 from cyberpinn.control import ControlNet, StateNet, rhs
+from cyberpinn.evaluation import evaluation_mask_rows, training_result_parameter_count
 from cyberpinn.inverse import generate_data
 from cyberpinn.configs import NodeSIPSDataConfig
 from cyberpinn.configs import InverseConfig, NodeInverseTrainConfig
@@ -235,6 +236,36 @@ class PinnComponentTests(unittest.TestCase):
         self.assertIn("stationarity_loss", profile.key_losses)
         self.assertIn(("learning rate", "1e-3"), profile.hyperparameters)
         self.assertTrue(any(row["name"] == "direct-control-pinn" for row in rows))
+
+    def test_training_result_parameter_count_covers_all_networks(self):
+        first = torch.nn.Linear(2, 3)
+        second = torch.nn.Linear(3, 1)
+
+        count = training_result_parameter_count(
+            (first, second, first, [{"loss": 0.0}]),
+            auxiliary_parameters=2,
+        )
+
+        self.assertEqual(count, 9 + 4 + 2)
+        with self.assertRaises(ValueError):
+            training_result_parameter_count((first,), auxiliary_parameters=-1)
+
+    def test_evaluation_masks_make_node_and_time_holdouts_explicit(self):
+        rows = evaluation_mask_rows(
+            nodes=3,
+            grid=4,
+            horizon=3.0,
+            observed_node_indices=[0, 2],
+            observed_time_indices=[0, 3],
+            seed=7,
+            noise_std=0.02,
+            observed_node_count=2,
+        )
+
+        self.assertEqual(len(rows), 7)
+        self.assertEqual(rows[1]["split"], "trajectory_held_out_after_initial_condition")
+        self.assertEqual(rows[-1]["coordinate"], 3.0)
+        self.assertEqual(rows[-2]["split"], "held_out")
 
 
 if __name__ == "__main__":

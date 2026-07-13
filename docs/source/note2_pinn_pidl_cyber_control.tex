@@ -451,10 +451,10 @@ of a parameter-mean-matched homogeneous model. The homogeneous model is scored
 on the same temporal, node, and joint node--time masks; its full-grid error is
 reported separately and is not compared directly with a holdout error. These tests do not remove
 non-identifiability; they expose whether the available observations support
-the proposed heterogeneous interpretation. Related physics-informed
-point-cloud work motivates shared geometric encoders on irregular domains
-\cite{kashefi2022pointnet}, but its fluid-mechanics results are not transferred
-as performance claims for cyber graphs.
+the proposed heterogeneous interpretation. The shared node decoder is a
+repository design hypothesis: it removes node-specific output heads and is
+tested against a parameter-matched dense baseline. That comparison, rather
+than an analogy to an unrelated physical domain, is the evidence used here.
 
 \section{PINN for Optimal Cyber Control}
 
@@ -528,13 +528,14 @@ The components are
 \label{fig:pmp-informed-pinn}
 \end{figure}
 
-Physics-informed control studies have used both residual-constrained
-optimization and neural control models \cite{mowlavi2023control,antonelo2024pinc}.
-Formal-guarantee methods such as LyZNet address a different validation question
-and require assumptions beyond small training residuals \cite{liu2024lyznet}.
-For constrained general-sum games, the Pontryagin neural operator provides a
-recent operator-learning direction \cite{zhang2024pno}; this note does not claim
-that its compact examples reproduce that algorithm.
+The direct and PMP-informed examples in this repository are evaluated by
+independent rollout; their residual losses alone do not certify optimality or
+safety. For constrained general-sum games, Zhang et al. combine a DeepONet
+value representation with HJI, terminal-value, and forward/backward costate
+consistency losses \cite{zhang2024pno}. Their method learns feedback values and
+policies across a parameterized family of two-player games. The compact
+time-only, single-player example here is an open-loop PMP residual model and
+does not reproduce that algorithm or inherit its intersection-game results.
 
 \subsection{Example: PMP for SIR malware control}
 For
@@ -1895,10 +1896,6 @@ Before trusting a result, check the following.
 \bibitem{cheng2024hodge} X. Cheng, L.-X. Yang, Q. Zhu, C. Gan, X. Yang, and G. Li, ``Cost-effective hybrid control strategies for dynamical propaganda war game,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 19, pp. 9789--9802, 2024.
 \bibitem{jafar2024malware} M. T. Jafar, L.-X. Yang, G. Li, Q. Zhu, and C. Gan, ``Minimizing malware propagation in Internet of Things networks: An optimal control using feedback loop approach,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 19, pp. 9682--9697, 2024.
 \bibitem{yang2019apt} L.-X. Yang, P. Li, X. Yang, Y. Y. Tang, and Y. Y. Tang, ``Security evaluation of the cyber networks under advanced persistent threats,'' \emph{IEEE Transactions on Dependable and Secure Computing}, vol. 16, no. 5, pp. 892--906, 2019.
-\bibitem{kashefi2022pointnet} A. Kashefi and T. Mukerji, ``Physics-informed PointNet: A deep learning solver for steady-state incompressible flows and thermal fields on multiple sets of irregular geometries,'' \emph{Journal of Computational Physics}, vol. 468, art. 111510, 2022, doi: 10.1016/j.jcp.2022.111510.
-\bibitem{mowlavi2023control} S. Mowlavi and S. Nabi, ``Optimal control of PDEs using physics-informed neural networks,'' \emph{Journal of Computational Physics}, vol. 473, art. 111731, 2023, doi: 10.1016/j.jcp.2022.111731.
-\bibitem{antonelo2024pinc} E. A. Antonelo, E. Camponogara, L. O. Seman, J. P. Jordanou, E. R. de Souza, and J. F. Huebner, ``Physics-informed neural nets for control of dynamical systems,'' \emph{Neurocomputing}, vol. 579, art. 127419, 2024, doi: 10.1016/j.neucom.2024.127419.
-\bibitem{liu2024lyznet} J. Liu, Y. Meng, and R. Zhou, ``LyZNet with Control: Physics-Informed Neural Network Control of Nonlinear Systems with Formal Guarantees,'' \emph{IFAC-PapersOnLine}, vol. 58, no. 11, pp. 201--206, 2024, doi: 10.1016/j.ifacol.2024.07.448.
 \bibitem{zhang2024pno} L. Zhang, M. Ghimire, Z. Xu, W. Zhang, and Y. Ren, ``Pontryagin neural operator for solving general-sum differential games with parametric state constraints,'' in \emph{Proceedings of the 6th Annual Learning for Dynamics and Control Conference}, PMLR, vol. 242, pp. 1728--1740, 2024.
 \end{thebibliography}
 

@@ -11,7 +11,6 @@ import time
 
 from cybercontrol.experiments import run_provenance
 from cybercontrol.io import write_csv, write_json
-from cybercontrol.nn import parameter_count
 
 from .configs import (
     ControlConfig,
@@ -22,6 +21,7 @@ from .configs import (
     PMPConfig,
 )
 from .control import train as train_control
+from .evaluation import evaluation_mask_rows, training_result_parameter_count
 from .inverse import train as train_inverse
 from .node_inverse import evaluate_factorized_transfer, train as train_node_inverse
 from .pidl import train as train_pidl
@@ -187,7 +187,10 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
                     "seed": seed,
                     "profile": "medium",
                     "training_runtime_seconds": time.perf_counter() - started,
-                    "network_parameters": parameter_count(model),
+                    "network_parameters": training_result_parameter_count(
+                        result,
+                        auxiliary_parameters=(2 if method in {"inverse_pinn", "pidl"} else 0),
+                    ),
                     "resolved_device": str(next(model.parameters()).device),
                 }
             )
@@ -226,40 +229,18 @@ def _medium(output_dir: Path, device: str) -> list[dict[str, float | int | str]]
                     )
                     rows.append(row)
                     if architecture == "dense":
-                        observed_node_set = set(truth_config["observed_node_indices"])
-                        observed_time_set = set(truth_config["observed_time_indices"])
-                        for node in range(config.nodes):
-                            mask_rows.append(
-                                {
-                                    "seed": seed,
-                                    "noise_std": noise,
-                                    "observed_node_count": observed_nodes,
-                                    "axis": "node",
-                                    "index": node,
-                                    "coordinate": node,
-                                    "split": (
-                                        "trajectory_observed"
-                                        if node in observed_node_set
-                                        else "trajectory_held_out_after_initial_condition"
-                                    ),
-                                }
+                        mask_rows.extend(
+                            evaluation_mask_rows(
+                                nodes=config.nodes,
+                                grid=config.grid,
+                                horizon=float(truth_config["horizon"]),
+                                observed_node_indices=truth_config["observed_node_indices"],
+                                observed_time_indices=truth_config["observed_time_indices"],
+                                seed=seed,
+                                noise_std=noise,
+                                observed_node_count=observed_nodes,
                             )
-                        for index in range(config.grid):
-                            mask_rows.append(
-                                {
-                                    "seed": seed,
-                                    "noise_std": noise,
-                                    "observed_node_count": observed_nodes,
-                                    "axis": "time",
-                                    "index": index,
-                                    "coordinate": index
-                                    * truth_config["horizon"]
-                                    / (config.grid - 1),
-                                    "split": "observed"
-                                    if index in observed_time_set
-                                    else "held_out",
-                                }
-                            )
+                        )
                     if architecture == "factorized":
                         transfer = evaluate_factorized_transfer(
                             model,

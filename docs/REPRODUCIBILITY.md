@@ -80,7 +80,8 @@ The main source is `docs/source/note2_pinn_pidl_cyber_control.tex`.
 `python -m cyberpinn docs` runs `latexmk` and copies the current PDF to
 `docs/note2_pinn_pidl_cyber_control.pdf`.
 
-`docs/literature/literature_matrix.csv` records evidence status. Rows marked
-`requested` cannot support detailed architecture claims until an owner-supplied,
-legally obtained PDF is reviewed. Such PDFs stay in ignored
-`literature_pdfs/`.
+`docs/literature/literature_decision_matrix.csv` records the full-text status,
+rubric score, decision and claim boundary for each candidate. Integrated papers
+have one page-level evidence note and a local hash record in
+`docs/literature/pdf_inventory.csv`. Requested PDFs and extracted text stay in
+ignored `literature_pdfs/` and `.literature_cache/` directories.
