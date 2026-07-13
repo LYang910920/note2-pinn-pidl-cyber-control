@@ -61,19 +61,7 @@ where:
     \item $f$ encodes the assumed propagation mechanism.
 \end{itemize}
 
-A conventional workflow is:
-\begin{center}
-\begin{tikzpicture}[node distance=1.25cm,>=Latex]
-\tikzstyle{box}=[rectangle,rounded corners,draw=black,align=center,minimum width=2.6cm,minimum height=0.9cm]
-\node[box] (model) {Write an ODE\\model};
-\node[box,right=of model] (param) {Estimate\\parameters};
-\node[box,right=of param] (solve) {Solve ODE or\\optimal control};
-\node[box,right=of solve] (eval) {Validate and\\compare};
-\draw[->] (model) -- (param);
-\draw[->] (param) -- (solve);
-\draw[->] (solve) -- (eval);
-\end{tikzpicture}
-\end{center}
+A conventional workflow specifies the ODE, estimates its parameters, solves the resulting forward or control problem, and validates the predictions against observations or independent simulations.
 
 This workflow is effective when data are abundant and the numerical problem is easy. However, cyber propagation studies often face three difficulties.
 \begin{enumerate}[leftmargin=2em]
@@ -710,18 +698,6 @@ Step & Question & Output \\
 \bottomrule
 \end{longtable}
 
-\begin{center}
-\begin{tikzpicture}[node distance=0.6cm,>=Latex,scale=0.83,transform shape]
-\tikzstyle{box}=[rectangle,rounded corners,draw=black,align=center,minimum width=2.2cm,minimum height=0.7cm]
-\node[box] (m) {Cyber\\model};
-\node[box,right=of m] (d) {Data and\\unknowns};
-\node[box,right=of d] (n) {Network\\outputs};
-\node[box,right=of n] (l) {PINN\\loss};
-\node[box,right=of l] (v) {Validation};
-\draw[->] (m)--(d);\draw[->] (d)--(n);\draw[->] (n)--(l);\draw[->] (l)--(v);
-\end{tikzpicture}
-\end{center}
-
 This translation is especially important when the PINN is used for optimal control. The network is not solving an abstract machine learning task; it is solving a constrained dynamical problem. Every loss term should correspond to a modeling statement.
 
 \section{Worked Example 1: Sparse-Data Malware Parameter Learning}
@@ -1163,21 +1139,25 @@ A complete PINN study should report the following.
     \item For games: unilateral deviation tests or approximate Nash gap.
 \end{enumerate}
 
-\newpage
-
 \section{Python Implementation Map}
-The companion code folder contains executable examples for the main PINN/PIDL tasks in this note.  The examples are designed to be readable and extendable.
+The \texttt{cyberpinn} package contains the executable implementations for the main PINN/PIDL tasks in this note. Each method has a typed configuration and a focused training function; the public runner assembles smoke and multi-seed studies.
 \begin{longtable}{p{0.30\textwidth}p{0.60\textwidth}}
 \toprule
 Python file & PINN/PIDL task \\
 \midrule
-\texttt{inverse\_pinn\_sir\_}\newline\texttt{malware.py} & inverse PINN: learn hidden states and unknown SIR parameters from sparse infection observations. \\
-\texttt{pidl\_unknown\_}\newline\texttt{mechanism.py} & PIDL correction: combine known SIR dynamics with a learned missing transfer term. \\
-\texttt{control\_pinn\_}\newline\texttt{malware.py} & direct neural-control PINN: train state and control networks by objective plus residual loss. \\
-\texttt{pmp\_informed\_pinn\_}\newline\texttt{malware.py} & PMP-informed PINN: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
+\texttt{cyberpinn.inverse} & Inverse PINN: learn hidden states and unknown SIR parameters from sparse infection observations. \\
+\texttt{cyberpinn.pidl} & PIDL correction: combine known SIR dynamics with a learned missing transfer term. \\
+\texttt{cyberpinn.control} & Direct neural control: train state and bounded-control networks by objective plus residual loss. \\
+\texttt{cyberpinn.pmp} & PMP-informed model: train state, costate, and control networks with state, costate, stationarity, and boundary residuals. \\
+\texttt{cyberpinn.node\_problem} & Generate heterogeneous node-SIPS truth and independent numerical rollouts. \\
+\texttt{cyberpinn.node\_inverse} & Dense/factorized inverse models with held-out node/time and transfer evaluation. \\
+\texttt{cyberpinn.experiments} & Bounded multi-seed profiles, evaluation masks, metrics, and provenance manifests. \\
+\texttt{python -m cyberpinn} & Single public runner for smoke, medium, figures, and PDF builds. \\
 \bottomrule
 \end{longtable}
-The separate running guide explains the exact commands, smoke tests, and troubleshooting steps.
+The repository README gives the exact commands. The files
+\path{docs/METHODS_AND_API.md} and \path{docs/REPRODUCIBILITY.md}
+define the model, losses, metrics, and run records.
 
 \appendix
 
@@ -1332,6 +1312,8 @@ Validate:
 \section{Appendix K: Choosing Network Outputs}
 The output layer should reflect the mathematical structure of the problem. For unconstrained states, a linear output is acceptable. For compartments that are proportions, a softmax output is often better. For controls bounded in $[0,u_{\max}]$, a sigmoid-scaled output is natural. For positive physical parameters, use softplus or a scaled sigmoid.
 
+\begingroup
+\renewcommand{\arraystretch}{0.94}
 \begin{longtable}{p{0.24\linewidth}p{0.30\linewidth}p{0.34\linewidth}}
 \toprule
 Quantity & Recommended output & Reason \\
@@ -1344,6 +1326,7 @@ Costate variable & Linear output & Costates can be positive or negative \\
 Piecewise/impulse state & Separate networks per interval or time-feature encoding & Avoids forcing a smooth network across jumps \\
 \bottomrule
 \end{longtable}
+\endgroup
 
 \section{Appendix L: A Minimal PINN Experiment Template}
 A reproducible experiment can be described by the following template.
@@ -1799,7 +1782,7 @@ Before trusting a result, check the following.
 \end{enumerate}
 
 
-\newpage
+{\small
 \begin{thebibliography}{99}
 \bibitem{raissi2019pinn} M. Raissi, P. Perdikaris, and G. E. Karniadakis, ``Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations,'' \emph{Journal of Computational Physics}, vol. 378, pp. 686--707, 2019.
 \bibitem{karniadakis2021pinnreview} G. E. Karniadakis, I. G. Kevrekidis, L. Lu, P. Perdikaris, S. Wang, and L. Yang, ``Physics-informed machine learning,'' \emph{Nature Reviews Physics}, vol. 3, pp. 422--440, 2021.
@@ -1814,6 +1797,7 @@ Before trusting a result, check the following.
 \bibitem{jafar2024malware} M. T. Jafar, L.-X. Yang, G. Li, Q. Zhu, and C. Gan, ``Minimizing malware propagation in Internet of Things networks: An optimal control using feedback loop approach,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 19, pp. 9682--9697, 2024.
 \bibitem{yang2019apt} L.-X. Yang, P. Li, X. Yang, Y. Y. Tang, and Y. Y. Tang, ``Security evaluation of the cyber networks under advanced persistent threats,'' \emph{IEEE Transactions on Dependable and Secure Computing}, vol. 16, no. 5, pp. 892--906, 2019.
 \end{thebibliography}
+}
 
 
 \end{document}
