@@ -9,18 +9,24 @@ open-loop control network u_phi(t) by minimizing:
     objective + state residual + initial condition + mass constraint.
 
 Direct control PINN is easy to implement, but it is a direct optimization
-method.  For stronger connection to PMP, see pmp_informed_pinn_malware.py.
+method. For stronger connection to PMP, see ``cyberpinn.pmp``.
 """
+
 from __future__ import annotations
 
-import argparse
+import logging
 import torch
 
+from cybercontrol.experiments import configure_torch
 from cybercontrol.models import controlled_sir_rhs_torch as rhs
-from cybercontrol.torch_utils import BoundedControlNet, SimplexStateNet, configure_torch, time_derivative
+from cybercontrol.nn import BoundedControlNet, SimplexStateNet
+from cybercontrol.pinn import time_derivative
 
 StateNet = SimplexStateNet
 ControlNet = BoundedControlNet
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def train(args):
@@ -57,7 +63,7 @@ def train(args):
         loss = args.w_res * loss_res + args.w_ic * loss_ic + loss_obj
         loss.backward()
         opt.step()
-        if it % args.log_every == 0:
+        if it % args.log_every == 0 or it == args.iters - 1:
             row = {
                 "iteration": it,
                 "loss": float(loss.detach().item()),
@@ -67,7 +73,7 @@ def train(args):
                 "mean_control": float(u.mean().detach().item()),
             }
             history.append(row)
-            print(
+            LOGGER.info(
                 f"it={it:05d}, loss={row['loss']:.3e}, "
                 f"obj={row['objective']:.3e}, res={row['residual_loss']:.3e}, "
                 f"mean_u={row['mean_control']:.3f}"
@@ -75,34 +81,3 @@ def train(args):
     if getattr(args, "return_history", False):
         return state, control, history
     return state, control
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Train a direct neural-control PINN for malware mitigation.")
-    p.add_argument("--smoke", action="store_true", help="Run a tiny execution check.")
-    p.add_argument("--iters", type=int, default=5000, help="Number of optimizer iterations.")
-    p.add_argument("--T", type=float, default=20.0, help="Time horizon.")
-    p.add_argument("--n-collocation", type=int, default=200, help="Number of collocation points.")
-    p.add_argument("--width", type=int, default=64, help="Hidden width for state/control networks.")
-    p.add_argument("--depth", type=int, default=2, help="Hidden-layer depth for state/control networks.")
-    p.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate.")
-    p.add_argument("--beta", type=float, default=0.8, help="Compromise rate.")
-    p.add_argument("--gamma", type=float, default=0.2, help="Recovery/removal rate.")
-    p.add_argument("--umax", type=float, default=1.0, help="Maximum control intensity.")
-    p.add_argument("--A", type=float, default=10.0, help="Running penalty on infected devices.")
-    p.add_argument("--B", type=float, default=1.0, help="Quadratic control penalty.")
-    p.add_argument("--AT", type=float, default=10.0, help="Terminal penalty on infected devices.")
-    p.add_argument("--w-res", type=float, default=10.0, help="Weight on state residual loss.")
-    p.add_argument("--w-ic", type=float, default=10.0, help="Weight on initial-condition loss.")
-    p.add_argument("--log-every", type=int, default=1000, help="Iteration interval for console logs and history rows.")
-    p.add_argument("--seed", type=int, default=3, help="Random seed.")
-    p.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto", help="Training device.")
-    p.add_argument("--threads", type=int, default=1, help="Torch CPU thread count; use 0 to leave unchanged.")
-    args = p.parse_args()
-    if args.smoke:
-        args.iters = 10
-        args.n_collocation = 50
-        args.width = 16
-        args.depth = 2
-        args.log_every = 1
-    train(args)

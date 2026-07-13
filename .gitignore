@@ -3,10 +3,15 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .pytest_cache/
+.ruff_cache/
+build/
+dist/
 .mypy_cache/
 *.egg-info/
 outputs/
 artifacts/
+literature_pdfs/
+.literature_cache/
 *.log
 *.aux
 *.fdb_latexmk
