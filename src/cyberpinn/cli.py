@@ -1,4 +1,4 @@
-"""Single public command-line interface for Note 2."""
+"""Infer rates from sparse data and compare PINN predictions with ODE fitting."""
 
 from __future__ import annotations
 
@@ -7,164 +7,191 @@ from pathlib import Path
 import subprocess
 import sys
 
-from cybercontrol.experiments import write_run_manifest
+import numpy as np
+import pandas as pd
+import torch
+from scipy.integrate import solve_ivp
+from scipy.optimize import least_squares
 
-from .configs import (
-    ControlConfig,
-    InverseConfig,
-    NodeInverseTrainConfig,
-    PIDLConfig,
-    PMPConfig,
-)
-from .control import train as train_control
-from .experiments import run_medium
-from .inverse import train as train_inverse
-from .node_inverse import train as train_node_inverse
-from .pidl import train as train_pidl
-from .pmp import train as train_pmp
+from cybercontrol.models import MalwareParams, controlled_sir_rhs
+
+from .configs import InverseConfig
+from .inverse import observation_data, train
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _source_root() -> Path:
-    """Return the source checkout required for figures and LaTeX commands."""
+def ode_trajectory(beta: float, gamma: float, time: np.ndarray) -> np.ndarray:
+    """Integrate the known SIR mechanism with the same initial state as the PINN."""
+    params = MalwareParams(beta=beta, gamma=gamma, omega=0.0)
+    solution = solve_ivp(
+        lambda t, x: controlled_sir_rhs(x, 0.0, 0.0, params),
+        (0.0, float(time[-1])),
+        [0.95, 0.05, 0.0],
+        t_eval=time,
+        rtol=1e-8,
+        atol=1e-10,
+    )
+    if not solution.success:
+        raise RuntimeError(solution.message)
+    return solution.y.T
 
-    if (
-        not (ROOT / "scripts" / "generate_figures.py").exists()
-        or not (ROOT / "docs" / "source").exists()
-    ):
-        raise RuntimeError(
-            "This command needs a source checkout containing scripts/ and docs/source/. "
-            "The installed cyberpinn package can still be imported normally."
-        )
-    return ROOT
+
+def fit_ode(time: np.ndarray, infected: np.ndarray):
+    """Fit only observed I values; positivity is enforced through log parameters."""
+    result = least_squares(
+        lambda rates: ode_trajectory(*np.exp(rates), time)[:, 1] - infected,
+        np.log([0.7, 0.3]),
+        bounds=(np.log([0.01, 0.01]), np.log([3.0, 3.0])),
+        max_nfev=100,
+    )
+    if not result.success:
+        raise RuntimeError(f"ODE fitting did not converge: {result.message}")
+    return tuple(np.exp(result.x))
 
 
-def _smoke() -> dict[str, float | int]:
-    inverse = InverseConfig(
-        iters=4,
-        width=8,
+def run_example(args: argparse.Namespace) -> pd.DataFrame:
+    """Use the same observations for a neural trajectory and a mechanistic baseline."""
+    import matplotlib.pyplot as plt
+
+    config = InverseConfig(
+        iters=args.iters,
+        width=32,
         depth=2,
-        n_data=6,
-        n_collocation=12,
-        log_every=1,
-        device="cpu",
+        n_data=args.observations,
+        n_collocation=64,
+        noise=args.noise,
+        log_every=max(1, args.iters // 20),
+        seed=args.seed,
+        device=args.device,
     )
-    _, _, _, inverse_history = train_inverse(inverse)
-    pidl = PIDLConfig(
-        iters=4,
-        width=8,
-        depth=2,
-        n_data=6,
-        n_collocation=12,
-        log_every=1,
-        device="cpu",
-    )
-    _, _, pidl_history = train_pidl(pidl)
-    control = ControlConfig(
-        iters=4,
-        width=8,
-        depth=2,
-        n_collocation=12,
-        log_every=1,
-        device="cpu",
-    )
-    _, _, control_history = train_control(control)
-    pmp = PMPConfig(
-        iters=4,
-        width=8,
-        depth=2,
-        n_collocation=12,
-        log_every=1,
-        device="cpu",
-    )
-    _, _, _, pmp_history = train_pmp(pmp)
-    node = NodeInverseTrainConfig(
-        nodes=6,
-        communities=2,
-        grid=17,
-        observed_nodes=3,
-        observed_times=6,
-        collocation=8,
-        iters=4,
-        width=8,
-        depth=2,
-        log_every=1,
-        device="cpu",
-    )
-    _, node_history, _ = train_node_inverse(node)
-    return {
-        "inverse_rows": len(inverse_history),
-        "pidl_rows": len(pidl_history),
-        "control_rows": len(control_history),
-        "pmp_rows": len(pmp_history),
-        "node_inverse_rows": len(node_history),
-        "node_inverse_mass_error": float(node_history[-1]["mass_error"]),
+    time, truth, indices, measured = observation_data(config.n_data, config.noise, config.seed)
+    model, beta, gamma, history = train(config)
+    device = next(model.parameters()).device
+    with torch.no_grad():
+        prediction = model(time.to(device)).cpu().numpy()
+    grid, exact = time[:, 0].numpy().astype(float), truth.numpy()
+    index = indices.numpy()
+    observations = measured[:, 0].numpy()
+    fitted_beta, fitted_gamma = fit_ode(grid[index], observations)
+    fitted = ode_trajectory(fitted_beta, fitted_gamma, grid)
+    replay = ode_trajectory(beta, gamma, grid)
+    methods = {
+        "PINN trajectory": (prediction, beta, gamma),
+        "PINN rates / ODE replay": (replay, beta, gamma),
+        "ODE least squares": (fitted, fitted_beta, fitted_gamma),
     }
+    heldout = np.ones(len(grid), dtype=bool)
+    heldout[index] = False
+    rows = []
+    for name, (state, estimated_beta, estimated_gamma) in methods.items():
+        rows.append(
+            {
+                "method": name,
+                "beta": estimated_beta,
+                "gamma": estimated_gamma,
+                "observed_I_rmse": np.sqrt(np.mean((state[index, 1] - observations) ** 2)),
+                "heldout_I_rmse": np.sqrt(np.mean((state[heldout, 1] - exact[heldout, 1]) ** 2)),
+            }
+        )
+    comparison = pd.DataFrame(rows)
+    out = args.output_dir
+    out.mkdir(parents=True, exist_ok=True)
+    comparison.to_csv(out / "comparison.csv", index=False)
+    pd.DataFrame({"time": grid[index], "infected_observed": observations}).to_csv(
+        out / "observations.csv", index=False
+    )
+    table = {"time": grid}
+    for name, state in (("true", exact), ("pinn", prediction), ("replay", replay), ("ode", fitted)):
+        for j, compartment in enumerate(("S", "I", "R")):
+            table[f"{compartment}_{name}"] = state[:, j]
+    pd.DataFrame(table).to_csv(out / "trajectories.csv", index=False)
+    history_table = pd.DataFrame(history)
+    history_table.to_csv(out / "training.csv", index=False)
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(grid, exact[:, 1], label="Synthetic truth")
+    for name, (state, _, _) in methods.items():
+        ax.plot(grid, state[:, 1], label=name)
+    ax.scatter(grid[index], observations, s=18, label="Observed I")
+    ax.set(xlabel="Time", ylabel="Infected fraction")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out / "fit.png", dpi=160)
+    plt.close(fig)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for column in ("data_loss", "ode_loss", "initial_condition_loss"):
+        ax.semilogy(
+            history_table["iteration"], history_table[column], label=column.replace("_", " ")
+        )
+    ax.set(xlabel="Training step", ylabel="Unweighted mean-square loss")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out / "learning.png", dpi=160)
+    plt.close(fig)
+    print("Synthetic generating rates: beta=0.8, gamma=0.2")
+    print(comparison.to_string(index=False, float_format=lambda value: f"{value:.4g}"))
+    print(f"Figures and tables: {out}; held-out times measure interpolation, not extrapolation.")
+    return comparison
 
 
-def _run_script(path: str) -> None:
-    root = _source_root()
-    subprocess.run([sys.executable, path], cwd=root, check=True)
+def _check() -> None:
+    config = InverseConfig(
+        iters=4, width=8, depth=2, n_data=6, n_collocation=12, log_every=1, device="cpu"
+    )
+    model, beta, gamma, history = train(config)
+    state = model(torch.tensor([[0.0], [10.0], [20.0]]))
+    assert torch.isfinite(state).all() and torch.allclose(state.sum(1), torch.ones(3))
+    assert beta > 0 and gamma > 0 and np.isfinite(history[-1]["loss"])
+    print("PINN gradients, simplex states and positive rates passed.")
 
 
 def _build_docs() -> None:
-    root = _source_root()
-    source = root / "docs" / "source"
+    source = ROOT / "docs" / "source"
+    if not source.is_dir():
+        raise RuntimeError("Building the lecture PDF requires a repository checkout.")
+    name = "note2_pinn_pidl_cyber_control"
     subprocess.run(
-        ["latexmk", "-pdf", "-interaction=nonstopmode", "note2_pinn_pidl_cyber_control.tex"],
+        ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", f"{name}.tex"],
         cwd=source,
         check=True,
     )
-    built = source / "note2_pinn_pidl_cyber_control.pdf"
-    if built.exists():
-        (root / "docs" / built.name).write_bytes(built.read_bytes())
+    (source.parent / f"{name}.pdf").write_bytes((source / f"{name}.pdf").read_bytes())
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="cyberpinn", description="Physics-informed cyber-control experiments."
+    parser = argparse.ArgumentParser(description="Compare inverse PINN and ODE parameter fitting.")
+    parser.add_argument(
+        "command", nargs="?", choices=["example", "check", "study", "docs"], default="example"
     )
-    sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("smoke", help="Fast execution and residual-shape checks.")
-    medium = sub.add_parser("medium", help="Three-seed architecture and data-regime study.")
-    medium.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto")
-    medium.add_argument("--output-dir", type=Path, default=Path("artifacts/medium"))
-    sub.add_parser("figures", help="Regenerate curated guide figures.")
-    sub.add_parser("docs", help="Build the current tutorial PDF.")
-    sub.add_parser("all", help="Run smoke, figures, and docs.")
+    parser.add_argument("--iters", type=int, default=1500)
+    parser.add_argument("--observations", type=int, default=24)
+    parser.add_argument("--noise", type=float, default=0.0)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--device", choices=["cpu", "auto", "cuda", "mps"], default="cpu")
+    parser.add_argument("--output-dir", type=Path, default=Path("results"))
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
-    if args.command == "smoke":
-        print(
-            write_run_manifest(
-                Path("artifacts/smoke_summary.json"),
-                command="smoke",
-                metrics=_smoke(),
-                repository_root=ROOT,
-            )
-        )
-    elif args.command == "medium":
-        rows = run_medium(args.output_dir, args.device)
-        print(f"wrote {len(rows)} rows to {args.output_dir}")
-    elif args.command == "figures":
-        _run_script("scripts/generate_figures.py")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    aliases = {"smoke": "check", "figures": "example", "medium": "study"}
+    if argv:
+        argv[0] = aliases.get(argv[0], argv[0])
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.iters < 1 or not 2 <= args.observations < 400 or args.noise < 0:
+        parser.error("Use positive training steps, 2-399 observations, and nonnegative noise.")
+    if args.command == "check":
+        _check()
     elif args.command == "docs":
         _build_docs()
-    elif args.command == "all":
-        print(
-            write_run_manifest(
-                Path("artifacts/smoke_summary.json"),
-                command="smoke",
-                metrics=_smoke(),
-                repository_root=ROOT,
-            )
-        )
-        _run_script("scripts/generate_figures.py")
-        _build_docs()
+    elif args.command == "study":
+        from .experiments import run_medium
+
+        run_medium(args.output_dir, args.device)
+    else:
+        run_example(args)
 
 
 if __name__ == "__main__":
