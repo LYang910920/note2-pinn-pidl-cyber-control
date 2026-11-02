@@ -1,104 +1,48 @@
-# Physics-Informed Cyber Control
+# Physics-informed learning for cyber dynamics
 
-Inverse PINN, physics-informed deep learning, neural control, and PMP-informed
-methods for cyber-dynamics models. Shared ODEs, graph SIPS equations, integration,
-neural blocks, metrics, and plotting come from the Foundation `cybercontrol`
-package.
+Infer propagation rates and hidden states from sparse observations, then ask whether those estimates reproduce the dynamics when used in an ODE solver. Continue to learned mechanism corrections, neural control and node-level inference.
 
-## Repository Family
+**First run:** one inverse-SIR experiment comparing a PINN with ordinary ODE parameter fitting. **Read next:** [the walkthrough](docs/GUIDE.md). The [lecture notes](docs/note2_pinn_pidl_cyber_control.pdf) develop PINN, PIDL, neural optimal control and PMP-based training.
 
-| Repository | Purpose |
-|---|---|
-| [Network Control and Differential Games](https://github.com/LYang910920/network-control-differential-games) | Foundation equations, FBS solvers, heterogeneous profiles, and shared Python components. |
-| [Cyber Control and Game Learning](https://github.com/LYang910920/note1-cyber-control-games) | Sampled environments, DDQN, CTDE, MAPPO, and game evaluation. |
-| **Physics-Informed Cyber Control** | Inverse PINN, PIDL, neural control, and PMP-informed learning. |
+## Install and run
 
-## Five-Minute Start
-
-With the Foundation repository next to this checkout:
+Use Python 3.11 or 3.12 and install Git. From this repository:
 
 ```bash
 python -m venv .venv
+# macOS / Linux:
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e "../network-control-differential-games[torch]"
-python -m pip install -e ".[dev]"
-python -m cyberpinn smoke
+# Windows PowerShell instead:
+# .venv\Scripts\Activate.ps1
+
+python -m pip install -e .
+python -m cyberpinn
 ```
 
-For a standalone checkout, `python -m pip install -e ".[dev]"` installs the
-Foundation revision declared in `pyproject.toml`.
+Installation automatically fetches the tested shared `cybercontrol` revision. The default runs on a CPU and uses generated data. A GPU, external dataset and LaTeX are not required. On Windows or Linux without a GPU, CPU-only PyTorch can be installed first:
 
 ```bash
-python -m cyberpinn medium --device auto --output-dir artifacts/medium
-python -m cyberpinn figures
-python -m cyberpinn docs
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e .
 ```
 
-`medium` runs bounded three-seed aggregate and node-SIPS studies with noise,
-observation sparsity, held-out nodes/times, and dense/factorized architectures.
+The example writes `results/fit.png`, `learning.png`, the observations, trajectories, training history and a comparison table. PINN and ODE fitting see exactly the same infection observations. A third curve integrates the ODE using the PINN's estimated rates, separating a fitted neural trajectory from the dynamics implied by its parameters.
 
-## Code Map
+```bash
+python -m cyberpinn --iters 3000 --noise 0.01 --observations 20 --output-dir results/noisy
+```
 
-| Topic | Module |
+The synthetic truth is available for teaching evaluation only. The reported held-out-time error measures interpolation between observed times, not forecasting beyond the training interval or proof of parameter identifiability.
+
+## Read the code
+
+| Question | Start here |
 |---|---|
-| Typed model and training settings | `cyberpinn.configs` |
-| Dense and factorized state networks | `cyberpinn.architectures` |
-| Aggregate inverse PINN | `cyberpinn.inverse` |
-| PIDL missing-mechanism model | `cyberpinn.pidl` |
-| Direct neural control | `cyberpinn.control` |
-| PMP-informed state/costate learning | `cyberpinn.pmp` |
-| Heterogeneous node-SIPS truth | `cyberpinn.node_problem` |
-| Node-SIPS inverse training and transfer | `cyberpinn.node_inverse` |
-| Held-out masks and result metrics | `cyberpinn.evaluation` |
-| Bounded multi-seed experiment profile | `cyberpinn.experiments` |
+| What does the complete experiment do? | [`cli.py`](src/cyberpinn/cli.py): `run_example` |
+| How are observations and physical losses constructed? | [`inverse.py`](src/cyberpinn/inverse.py): `observation_data`, `train` |
+| How is the ODE baseline fitted? | [`cli.py`](src/cyberpinn/cli.py): `fit_ode` |
+| How do I adapt the model or add control? | [Walkthrough](docs/GUIDE.md) |
 
-The public entry point is `python -m cyberpinn`. `run_all.py` remains a small
-compatibility shim; it contains no model or training implementation.
+The [foundation tutorial](https://github.com/LYang910920/network-control-differential-games) supplies the common dynamics and numerical tools. [Note 1](https://github.com/LYang910920/note1-cyber-control-games) studies learned feedback decisions using those dynamics.
 
-## Representative Experiments
-
-Sparse inverse data observe the compromised component at selected times. Hidden
-state trajectories and parameters are constrained by the SIR residual and initial
-condition, then assessed on held-out points.
-
-![Sparse inverse-PINN observations](docs/assets/inverse_pinn_sparse_data.png)
-
-The PIDL example preserves the known SIR mechanism and learns a regularized
-correction for a synthetic missing term. Its ablation compares the correction
-model with the known-mechanism baseline.
-
-![Known mechanism and synthetic missing term](docs/assets/pidl_missing_mechanism.png)
-
-For heterogeneous node-SIPS truth, the inverse model estimates community-specific
-or feature-conditioned rates. It also evaluates a homogeneous misspecification
-baseline; fitting one global rate pair is not presented as recovery of the
-heterogeneous truth.
-
-## Extension Route
-
-1. Validate the ODE and observation map with a numerical solver before training.
-2. Declare observed states, collocation points, unknown parameters, and positivity constraints.
-3. Change typed configurations in `cyberpinn.configs`; avoid literals in loss loops.
-4. Track each loss component and evaluate states, parameters, residuals, and conservation separately.
-5. Test noise, sparsity, held-out nodes/times, graph transfer, and homogeneous misspecification.
-
-See [Methods and API](docs/METHODS_AND_API.md),
-[Reproducibility](docs/REPRODUCIBILITY.md), and
-[From Model to Paper](docs/FROM_MODEL_TO_PAPER.md).
-
-## Validation
-
-```bash
-python -m compileall -q src tests scripts
-ruff check .
-ruff format --check src tests scripts
-pytest -q
-python -m cyberpinn smoke
-python -m cyberpinn figures
-```
-
-Residual consistency does not establish parameter identifiability. The examples
-are controlled synthetic studies, not calibrated cyber-risk models. See
-[LICENSE](LICENSE), [NOTICE.md](NOTICE.md), and the
-[tutorial PDF](docs/note2_pinn_pidl_cyber_control.pdf).
+For development: `python -m pip install -e ".[dev]"`, then `pytest -q`. Source attribution and licensing are in [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
