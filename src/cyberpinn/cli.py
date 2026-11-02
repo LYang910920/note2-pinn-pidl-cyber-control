@@ -121,7 +121,9 @@ def run_example(args: argparse.Namespace) -> pd.DataFrame:
     plt.close(fig)
     fig, ax = plt.subplots(figsize=(7, 4))
     for column in ("data_loss", "ode_loss", "initial_condition_loss"):
-        ax.semilogy(history_table["iteration"], history_table[column], label=column.replace("_", " "))
+        ax.semilogy(
+            history_table["iteration"], history_table[column], label=column.replace("_", " ")
+        )
     ax.set(xlabel="Training step", ylabel="Unweighted mean-square loss")
     ax.legend()
     fig.tight_layout()
