@@ -1,0 +1,94 @@
+name: Publish reviewed lecture
+on:
+  push:
+    paths: [.github/workflows/publish-lectures.yml]
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Assemble reviewed source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, os, re, urllib.request
+          from pathlib import Path
+          def blob(repo, sha):
+              request = urllib.request.Request(f'https://api.github.com/repos/{repo}/git/blobs/{sha}', headers={'Authorization': 'Bearer '+os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(request) as response:
+                  return base64.b64decode(json.load(response)['content'])
+          foundation = 'LYang910920/network-control-differential-games'
+          prefix = b''.join(blob(foundation, '835ffdfa039e3f1f5d50b5365019fecbf50a066b').splitlines(keepends=True)[:65])
+          suffix = b''.join(blob(foundation, '4e3279114fd0aa28d39c3a4e0cf92811e2bd892b').splitlines(keepends=True)[-26:])
+          parts = ['c93f9de675b580735e693963b5db31e89aa1df54','e2b9cf542861e29c711017dd17f2d4fe3cb5ea2b','1026071bfe328af2ed937eede2c44009b228dcc1']
+          data = prefix + b''.join(blob(os.environ['GITHUB_REPOSITORY'], sha) for sha in parts) + suffix
+          data = data.replace(b'\\emph{Neural ordinary differential equations},', b"``Neural ordinary differential equations,''")
+          assert hashlib.sha256(data).hexdigest() == '7cdc9786a5daa69b64ab140460060bcfa27a9498a1dc73793ae91b1895c63608'
+          Path('docs/source/note2_pinn_pidl_cyber_control.tex').write_bytes(data)
+          text = data.decode()
+          body = text.split('\\begin{thebibliography}')[0]
+          references = set(re.findall(r'\\bibitem\{([^}]+)\}', text))
+          cited = {key.strip() for group in re.findall(r'\\cite\{([^}]+)\}', body) for key in group.split(',')}
+          assert cited == references
+          papers = {'security2017','patch2018','repair2019','backup2021','opinions2020','rumor2021','impulse2023','outsource2024','feedback2024','war2024','awareness2025','malware2025'}
+          assert papers <= cited
+          print(f'{len(references)} references; all 12 research papers connected to the lecture.')
+          guide = Path('docs/GUIDE.md')
+          section = '\n## Research connections and constrained residuals\n\nThe lecture restores the formal cyber-control papers and explains how their mechanisms motivate inverse problems, rather than attributing PINN methods to publications that develop different algorithms. It connects APT evaluation and control, opinion/rumor games, impulsive defense, propaganda awareness, malware-opinion coupling, and feedback-loop parameter learning with MPC.\n\nFor bounded PMP training, `pmp.py` uses `u - clamp(u - H_u/B, 0, umax)`, so valid boundary minima satisfy the residual. In `pidl.py`, the additional contact-driven flux is `S * I * softplus(N(x))`; it conserves mass and vanishes at the susceptible and infected boundaries. The lecture derives these properties, and `tests/test_lecture_conditions.py` checks them and their live gradients.\n'
+          if '## Research connections and constrained residuals' not in guide.read_text():
+              guide.write_text(guide.read_text()+section)
+          PY
+      - name: Format, test and run the examples
+        env:
+          MPLBACKEND: Agg
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install -e '.[dev]'
+          ruff format src/cyberpinn/pmp.py src/cyberpinn/pidl.py tests/test_lecture_conditions.py
+          python -m compileall -q src tests scripts
+          ruff check .
+          ruff format --check src tests scripts
+          pytest -q
+          python -m cyberpinn check
+          python -m cyberpinn --output-dir results/lecture
+          python - <<'PY'
+          import numpy as np
+          from cyberpinn.configs import PMPConfig, PIDLConfig
+          from cyberpinn.pmp import train as pmp
+          from cyberpinn.pidl import train as pidl
+          for trainer, cfg in [(pmp, PMPConfig(iters=100, width=16, depth=2, n_collocation=32, log_every=20, device='cpu')), (pidl, PIDLConfig(iters=100, width=16, depth=2, n_data=12, n_collocation=32, log_every=20, device='cpu'))]:
+              history = trainer(cfg)[-1]
+              assert all(np.isfinite(row['loss']) for row in history)
+              print(trainer.__module__, history[-1])
+          PY
+      - uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: docs/source
+          root_file: note2_pinn_pidl_cyber_control.tex
+          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
+      - name: Publish source, PDF and aligned code
+        run: |
+          if grep -E 'Overfull|undefined references|undefined citations' docs/source/note2_pinn_pidl_cyber_control.log; then exit 1; fi
+          cp docs/source/note2_pinn_pidl_cyber_control.pdf docs/note2_pinn_pidl_cyber_control.pdf
+          git config user.name 'LYang910920'
+          git config user.email '20222003+LYang910920@users.noreply.github.com'
+          git add docs/source/note2_pinn_pidl_cyber_control.tex docs/note2_pinn_pidl_cyber_control.pdf docs/GUIDE.md src/cyberpinn/pmp.py src/cyberpinn/pidl.py tests/test_lecture_conditions.py
+          git commit -m 'Restore research connections and publish the mathematically aligned PINN lecture'
+          git push origin HEAD:main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-lecture
+          path: |
+            docs/note2_pinn_pidl_cyber_control.pdf
+            docs/source/note2_pinn_pidl_cyber_control.tex
+            src/cyberpinn/pmp.py
+            src/cyberpinn/pidl.py
+            tests/test_lecture_conditions.py
+          retention-days: 7
