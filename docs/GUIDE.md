@@ -92,3 +92,9 @@ python -m cyberpinn docs
 ```
 
 Tests cover state mass, positive/bounded outputs, live gradients, observation handling and the student workflow. They do not require a short PINN run to outperform ODE fitting. Only the PDF build requires LaTeX/latexmk and the source checkout. Existing lecture commands `smoke`, `figures` and `medium` map to `check`, `example` and `study`.
+
+## Research connections and constrained residuals
+
+The lecture restores the formal cyber-control papers and explains how their mechanisms motivate inverse problems, rather than attributing PINN methods to publications that develop different algorithms. It connects APT evaluation and control, opinion/rumor games, impulsive defense, propaganda awareness, malware-opinion coupling, and feedback-loop parameter learning with MPC.
+
+For bounded PMP training, `pmp.py` uses `u - clamp(u - H_u/B, 0, umax)`, so valid boundary minima satisfy the residual. In `pidl.py`, the additional contact-driven flux is `S * I * softplus(N(x))`; it conserves mass and vanishes at the susceptible and infected boundaries. The lecture derives these properties, and `tests/test_lecture_conditions.py` checks them and their live gradients.

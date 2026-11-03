@@ -38,7 +38,9 @@ def projected_control_residual(u, hu, umax: float, curvature: float):
 def train(args):
     """Fit state, costate, constrained optimality and endpoint residuals."""
     if args.T <= 0 or args.n_collocation < 2 or args.iters < 1 or args.log_every < 1:
-        raise ValueError("Use a positive horizon, iterations/log interval and two collocation points.")
+        raise ValueError(
+            "Use a positive horizon, iterations/log interval and two collocation points."
+        )
     if args.B <= 0 or args.umax < 0:
         raise ValueError("B must be positive and umax nonnegative.")
     _, device, _ = configure_torch(
@@ -95,5 +97,14 @@ def train(args):
                 "boundary_loss": float((loss_ic + loss_terminal).detach().item()),
             }
             history.append(row)
-            LOGGER.info("step=%d loss=%.3g projected_control=%.3g", it, row["loss"], row["stationarity_loss"])
-    return (state, costate, control, history) if getattr(args, "return_history", False) else (state, costate, control)
+            LOGGER.info(
+                "step=%d loss=%.3g projected_control=%.3g",
+                it,
+                row["loss"],
+                row["stationarity_loss"],
+            )
+    return (
+        (state, costate, control, history)
+        if getattr(args, "return_history", False)
+        else (state, costate, control)
+    )

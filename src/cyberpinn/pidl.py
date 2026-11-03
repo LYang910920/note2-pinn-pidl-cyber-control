@@ -61,7 +61,9 @@ class CorrectionNet(nn.Module):
 def train(args):
     """Fit observed infection, the initial state and the corrected differential equation."""
     if args.iters < 1 or args.n_collocation < 2 or args.log_every < 1:
-        raise ValueError("Use positive iterations/log interval and at least two collocation points.")
+        raise ValueError(
+            "Use positive iterations/log interval and at least two collocation points."
+        )
     if not 2 <= args.n_data <= 400:
         raise ValueError("Use between 2 and 400 distinct observation points.")
     _, device, _ = configure_torch(
@@ -118,5 +120,11 @@ def train(args):
                 "mean_correction": float(flux.mean().detach().item()),
             }
             history.append(row)
-            LOGGER.info("step=%d loss=%.3g extra_flux=%.3g", iteration, row["loss"], row["mean_correction"])
-    return (state_net, corr_net, history) if getattr(args, "return_history", False) else (state_net, corr_net)
+            LOGGER.info(
+                "step=%d loss=%.3g extra_flux=%.3g", iteration, row["loss"], row["mean_correction"]
+            )
+    return (
+        (state_net, corr_net, history)
+        if getattr(args, "return_history", False)
+        else (state_net, corr_net)
+    )
