@@ -1,24 +1,14 @@
-"""
-Copyright (c) 2026 Luxing Yang.
-Licensed under the MIT License. See LICENSE in the repository root.
+"""PMP-informed neural control for the bounded SIR patching problem.
 
-PMP-informed PINN for controlled malware propagation.
-
-Compared with control_pinn_malware.py, this script trains state, costate,
-and control networks using residuals of the PMP optimality system:
-    state residual          x' - f(x,u) = 0
-    costate residual        lambda' + H_x = 0
-    stationarity residual   H_u = 0 for interior controls
-    boundary residual       x(0)=x0, lambda(T)=terminal gradient
-
-The example is compact but shows how PMP is explicitly connected
-to a neural loss.  This is different from ordinary RL, which may use only the
-same simulator and reward.
+Copyright (c) 2026 Luxing Yang. Licensed under the repository MIT License.
+State, costate and control networks approximate the normal PMP system. The
+projected control residual includes interior and boundary Hamiltonian minima.
 """
 
 from __future__ import annotations
 
 import logging
+
 import torch
 
 from cybercontrol.experiments import configure_torch
@@ -28,24 +18,29 @@ from cybercontrol.pinn import time_derivative
 
 StateNet = SimplexStateNet
 ControlNet = BoundedControlNet
-
-
 LOGGER = logging.getLogger(__name__)
 
 
 def hamiltonian(x, u, lam, A, B, beta, gamma):
+    """Minimization Hamiltonian: A*I + B*u**2/2 + lambda^T f."""
     f = f_state(x, u, beta, gamma)
     running = A * x[:, 1:2] + 0.5 * B * u * u
     return running + torch.sum(lam * f, dim=1, keepdim=True)
 
 
-def train(args):
-    """Train state, costate, and control networks against PMP residuals.
+def projected_control_residual(u, hu, umax: float, curvature: float):
+    """Zero at the constrained minimizer of the quadratic control Hamiltonian."""
+    if curvature <= 0 or umax < 0:
+        raise ValueError("Control curvature must be positive and its upper bound nonnegative.")
+    return u - torch.clamp(u - hu / curvature, min=0.0, max=umax)
 
-    This needs the Hamiltonian ingredients, initial/terminal boundary
-    conditions, and collocation points.  It produces neural approximations of
-    `x(t)`, `lambda(t)`, and `u(t)`, plus separate residual diagnostics.
-    """
+
+def train(args):
+    """Fit state, costate, constrained optimality and endpoint residuals."""
+    if args.T <= 0 or args.n_collocation < 2 or args.iters < 1 or args.log_every < 1:
+        raise ValueError("Use a positive horizon, iterations/log interval and two collocation points.")
+    if args.B <= 0 or args.umax < 0:
+        raise ValueError("B must be positive and umax nonnegative.")
     _, device, _ = configure_torch(
         seed=args.seed,
         device=getattr(args, "device", "auto"),
@@ -59,7 +54,7 @@ def train(args):
         list(state.parameters()) + list(costate.parameters()) + list(control.parameters()),
         lr=args.lr,
     )
-    t = torch.linspace(0, args.T, args.n_collocation).view(-1, 1).to(device)
+    t = torch.linspace(0, args.T, args.n_collocation, device=device).view(-1, 1)
     t.requires_grad_(True)
     x0 = torch.tensor([[0.95, 0.05, 0.0]], device=device)
     lamT = torch.tensor([[0.0, args.AT, 0.0]], device=device)
@@ -67,23 +62,19 @@ def train(args):
 
     for it in range(args.iters):
         opt.zero_grad()
-        x = state(t)
-        lam = costate(t)
-        u = control(t)
+        t.grad = None
+        x, lam, u = state(t), costate(t), control(t)
         dxdt = time_derivative(x, t)
         dlamdt = time_derivative(lam, t)
         f = f_state(x, u, args.beta, args.gamma)
         H = hamiltonian(x, u, lam, args.A, args.B, args.beta, args.gamma)
-        # H_x and H_u by autodiff.  Compute them on the live graph so the
-        # PMP residuals train the state, costate, and control networks.
+        # Independent networks give the displayed Hamiltonian partial derivatives.
         Hx = torch.autograd.grad(H.sum(), x, create_graph=True, retain_graph=True)[0]
         Hu = torch.autograd.grad(H.sum(), u, create_graph=True, retain_graph=True)[0]
-        # Interior stationarity Hu=0.  With sigmoid control this is approximate;
-        # use a projected/KKT residual in research models where controls sit on
-        # bounds for a large part of the horizon.
+        residual_u = projected_control_residual(u, Hu, args.umax, args.B)
         loss_state = torch.mean((dxdt - f) ** 2)
         loss_costate = torch.mean((dlamdt + Hx) ** 2)
-        loss_stationarity = torch.mean(Hu**2)
+        loss_stationarity = torch.mean(residual_u**2)
         loss_ic = torch.mean((state(torch.zeros(1, 1, device=device)) - x0) ** 2)
         loss_terminal = torch.mean((costate(torch.tensor([[args.T]], device=device)) - lamT) ** 2)
         loss = (
@@ -104,12 +95,5 @@ def train(args):
                 "boundary_loss": float((loss_ic + loss_terminal).detach().item()),
             }
             history.append(row)
-            LOGGER.info(
-                f"it={it:05d}, loss={row['loss']:.2e}, "
-                f"state={row['state_loss']:.2e}, "
-                f"costate={row['costate_loss']:.2e}, "
-                f"stat={row['stationarity_loss']:.2e}"
-            )
-    if getattr(args, "return_history", False):
-        return state, costate, control, history
-    return state, costate, control
+            LOGGER.info("step=%d loss=%.3g projected_control=%.3g", it, row["loss"], row["stationarity_loss"])
+    return (state, costate, control, history) if getattr(args, "return_history", False) else (state, costate, control)
